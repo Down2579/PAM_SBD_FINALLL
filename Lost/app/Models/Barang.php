@@ -9,10 +9,16 @@ class Barang extends Model
     protected $table = 'barang';
 
     protected $fillable = [
-        'nama_barang', 'deskripsi', 'gambar_url', 'tipe_laporan',
-        'status', 'tanggal_kejadian', 'id_pelapor',
-        'id_kategori', 'id_lokasi'
+        'nama_barang',
+        'deskripsi',
+        'tipe_laporan',
+        'status',
+        'id_pelapor',
+        'id_kategori',
+        'id_lokasi'
     ];
+
+    public $timestamps = true;
 
     public function pelapor()
     {
@@ -29,8 +35,8 @@ class Barang extends Model
         return $this->belongsTo(Lokasi::class, 'id_lokasi');
     }
 
-    public function klaim()
+    public function pengambilan()
     {
-        return $this->hasMany(Klaim::class, 'id_barang');
+        return $this->hasMany(Pengambilan::class, 'id_barang');
     }
 }

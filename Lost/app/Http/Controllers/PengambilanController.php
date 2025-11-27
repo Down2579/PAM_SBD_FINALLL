@@ -3,8 +3,9 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use App\Models\Pengambilan;
 
-class KlaimController extends Controller
+class PengambilanController extends Controller
 {
     public function store(Request $req)
     {
@@ -14,22 +15,22 @@ class KlaimController extends Controller
             'pesan_klaim' => 'required',
         ]);
 
-        $klaim = Klaim::create($req->all());
+        $pengambilan = Pengambilan::create($req->all());
 
-        return response()->json($klaim);
+        return response()->json($pengambilan);
     }
 
     public function approve($id)
     {
-        $klaim = Klaim::findOrFail($id);
-        $klaim->update(['status_klaim' => 'disetujui']);
+        $pengambilan = Pengambilan::findOrFail($id);
+        $pengambilan->update(['status_klaim' => 'disetujui']);
         return response()->json(['message' => 'Klaim disetujui']);
     }
 
     public function reject($id)
     {
-        $klaim = Klaim::findOrFail($id);
-        $klaim->update(['status_klaim' => 'ditolak']);
+        $pengambilan = Pengambilan::findOrFail($id);
+        $pengambilan->update(['status_klaim' => 'ditolak']);
         return response()->json(['message' => 'Klaim ditolak']);
     }
 }

@@ -12,6 +12,7 @@ return new class extends Migration
             $table->id();
             $table->string('nama_lokasi', 100)->unique();
             $table->text('deskripsi')->nullable();
+            $table->timestamps();
         });
     }
 

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Barang;
 use Illuminate\Http\Request;
 
 class BarangController extends Controller
@@ -26,7 +27,7 @@ class BarangController extends Controller
 
     public function show($id)
     {
-        return Barang::with(['pelapor', 'kategori', 'lokasi', 'klaim'])
+        return Barang::with(['pelapor', 'kategori', 'lokasi', 'pengambilan'])
             ->findOrFail($id);
     }
 }

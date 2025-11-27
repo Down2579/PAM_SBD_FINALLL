@@ -12,19 +12,19 @@ class User extends Authenticatable
     protected $table = 'users';
 
     protected $fillable = [
-        'nama_lengkap', 'nim', 'email', 'password_hash',
+        'nama_lengkap', 'nim', 'email', 'password',
         'nomor_telepon', 'role'
     ];
 
-    protected $hidden = ['password_hash'];
+    protected $hidden = ['password'];
 
     public function barang()
     {
         return $this->hasMany(Barang::class, 'id_pelapor');
     }
 
-    public function klaim()
+    public function pengambilan()
     {
-        return $this->hasMany(Klaim::class, 'id_pengklaim');
+        return $this->hasMany(Pengambilan::class, 'id_pengklaim');
     }
 }

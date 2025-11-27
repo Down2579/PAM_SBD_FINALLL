@@ -26,7 +26,7 @@ class AuthController extends Controller
             'nama_lengkap' => $req->nama_lengkap,
             'nim' => $req->nim,
             'email' => $req->email,
-            'password_hash' => bcrypt($req->password),
+            'password' => bcrypt($req->password),
             'nomor_telepon' => $req->nomor_telepon,
             'role' => 'mahasiswa'
         ]);
@@ -52,7 +52,7 @@ class AuthController extends Controller
         $user = User::where('email', $req->email)->first();
 
         // Cek apakah user tidak ditemukan atau password salah
-        if (!$user || !password_verify($req->password, $user->password_hash)) {
+        if (!$user || !password_verify($req->password, $user->password)) {
             return response()->json(['error' => 'Invalid credentials'], 401);
         }
 

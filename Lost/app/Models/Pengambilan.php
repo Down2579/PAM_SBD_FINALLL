@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class Klaim extends Model
 {
-    protected $table = 'klaim';
+    protected $table = 'pengambilan';
 
     protected $fillable = [
         'id_barang', 'id_pengklaim', 'pesan_klaim', 'status_klaim'

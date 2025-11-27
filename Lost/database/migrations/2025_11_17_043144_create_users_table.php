@@ -14,7 +14,7 @@ return new class extends Migration
             $table->string('nama_lengkap', 100);
             $table->string('nim', 20)->unique();
             $table->string('email', 100)->unique();
-            $table->string('password_hash', 255);
+            $table->string('password', 255);
             $table->string('nomor_telepon', 15)->nullable();
 
             // ENUM PostgreSQL
