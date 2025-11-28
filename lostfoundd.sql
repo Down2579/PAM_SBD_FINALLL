@@ -19,10 +19,11 @@ CREATE TABLE Users (
     nama_lengkap VARCHAR(100) NOT NULL,
     nim VARCHAR(20) UNIQUE NOT NULL,
     email VARCHAR(100) UNIQUE NOT NULL,
-    password_hash VARCHAR(255) NOT NULL,
+    password VARCHAR(255) NOT NULL,
     nomor_telepon VARCHAR(15),
     role user_role DEFAULT 'mahasiswa',
     created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+    updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
 
 -- 2.2. Kategori
