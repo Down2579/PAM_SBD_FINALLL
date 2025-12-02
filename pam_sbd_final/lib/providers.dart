@@ -12,13 +12,13 @@ class AuthProvider with ChangeNotifier {
   bool get isLoading => _isLoading; 
 
   // ==================== LOGIN ====================
-  Future<bool> login(String nim, String password) async {
+  Future<bool> login(String email, String password) async {
     _isLoading = true;
     notifyListeners();
 
     try {
       // 1. Request ke API
-      _user = await _api.login(nim, password);
+      _user = await _api.login(email, password);
 
       // 2. Jika login sukses & data user ada, simpan ke memori HP
       if (_user != null) {

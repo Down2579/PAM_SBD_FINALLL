@@ -11,7 +11,7 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  final _nimController = TextEditingController();
+  final _emailController = TextEditingController();
   final _passController = TextEditingController();
 
   bool _isPasswordVisible = false;
@@ -94,10 +94,10 @@ class _LoginScreenState extends State<LoginScreen> {
 
                           // ================= INPUT FIELDS =================
 
-                          // NIM
+                          // Email
                           _buildGlassyInput(
-                            controller: _nimController,
-                            hint: "NIM",
+                            controller: _emailController,
+                            hint: "Email",
                             icon: Icons.alternate_email,
                             keyboard: TextInputType.text,
                           ),
@@ -137,13 +137,13 @@ class _LoginScreenState extends State<LoginScreen> {
                                   height: 55,
                                   child: ElevatedButton(
                                     onPressed: () async {
-                                      if (_nimController.text.isEmpty ||
+                                      if (_emailController.text.isEmpty ||
                                           _passController.text.isEmpty) {
                                         ScaffoldMessenger.of(context)
                                             .showSnackBar(
                                           const SnackBar(
                                             content: Text(
-                                                "Please enter NIM and Password"),
+                                                "Please enter Email and Password"),
                                             backgroundColor: Colors.redAccent,
                                           ),
                                         );
@@ -151,7 +151,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                       }
 
                                       bool success = await auth.login(
-                                        _nimController.text.trim(),
+                                        _emailController.text.trim(),
                                         _passController.text.trim(),
                                       );
 
@@ -218,7 +218,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
                                     if (result != null) {
                                       setState(() {
-                                        _nimController.text = result;
+                                        _emailController.text = result;
                                       });
                                     }
                                   },
