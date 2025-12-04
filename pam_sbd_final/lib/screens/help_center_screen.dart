@@ -3,6 +3,7 @@ import 'home_screen.dart';
 import 'my_task_screen.dart';
 import 'completed_screen.dart';
 import 'profile_screen.dart';
+import '../widgets/notification_modal.dart';
 
 class HelpCenterScreen extends StatefulWidget {
   @override
@@ -14,9 +15,10 @@ class _HelpCenterScreenState extends State<HelpCenterScreen> {
   final TextEditingController _textController = TextEditingController();
 
   // --- PALET WARNA ---
-  final Color darkBlue = const Color(0xFF2B4263);
-  final Color textDark = const Color(0xFF1F1F1F);
-  final Color bubbleColor = const Color(0xFFE8E8E8);
+  final Color darkNavy = const Color(0xFF2B4263);
+  final Color accentBlue = const Color(0xFF4A90E2);
+  final Color textDark = const Color(0xFF1F2937);
+  final Color bubbleColor = const Color(0xFFE8EEF5);
 
   @override
   void dispose() {
@@ -45,34 +47,39 @@ class _HelpCenterScreenState extends State<HelpCenterScreen> {
         actions: [
           Padding(
             padding: const EdgeInsets.only(right: 16.0, top: 8.0),
-            child: Stack(
-              alignment: Alignment.topRight,
-              children: [
-                Icon(
-                  Icons.notifications_none_outlined,
-                  color: textDark,
-                  size: 30,
-                ),
-                Container(
-                  width: 18,
-                  height: 18,
-                  decoration: BoxDecoration(
-                    color: Colors.red,
-                    shape: BoxShape.circle,
-                    border: Border.all(color: Colors.white, width: 2),
+            child: GestureDetector(
+              onTap: () async {
+                await showNotificationsModal(context);
+              },
+              child: Stack(
+                alignment: Alignment.topRight,
+                children: [
+                  Icon(
+                    Icons.notifications_none_outlined,
+                    color: textDark,
+                    size: 30,
                   ),
-                  child: Center(
-                    child: Text(
-                      '3',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
+                  Container(
+                    width: 18,
+                    height: 18,
+                    decoration: BoxDecoration(
+                      color: Colors.red,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.white, width: 2),
+                    ),
+                    child: Center(
+                      child: Text(
+                        '3',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ],
@@ -124,7 +131,7 @@ class _HelpCenterScreenState extends State<HelpCenterScreen> {
         },
         type: BottomNavigationBarType.fixed,
         backgroundColor: Colors.white,
-        selectedItemColor: darkBlue,
+        selectedItemColor: darkNavy,
         unselectedItemColor: Colors.grey,
         showSelectedLabels: false,
         showUnselectedLabels: false,
@@ -149,7 +156,7 @@ class _HelpCenterScreenState extends State<HelpCenterScreen> {
           child: Image.asset(
             'assets/images/logo.png', // Pastikan path logo benar
             errorBuilder: (context, error, stackTrace) {
-              return Icon(Icons.inventory_2_outlined, size: 48, color: darkBlue);
+              return Icon(Icons.inventory_2_outlined, size: 48, color: darkNavy);
             },
           ),
         ),
@@ -169,7 +176,7 @@ class _HelpCenterScreenState extends State<HelpCenterScreen> {
             Text(
               "Something looking for you",
               style: TextStyle(
-                color: darkBlue,
+                color: darkNavy,
                 fontSize: 14,
                 fontWeight: FontWeight.w600,
               ),
@@ -240,7 +247,7 @@ class _HelpCenterScreenState extends State<HelpCenterScreen> {
             );
           },
           style: ElevatedButton.styleFrom(
-            backgroundColor: darkBlue,
+            backgroundColor: darkNavy,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(20),
             ),

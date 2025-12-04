@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 
 class HelpScreen extends StatelessWidget {
-  final Color darkBlue = const Color(0xFF2B4263);
+  final Color darkNavy = const Color(0xFF2B4263);
+  final Color accentBlue = const Color(0xFF4A90E2);
 
   @override
   Widget build(BuildContext context) {
@@ -19,11 +20,11 @@ class HelpScreen extends StatelessWidget {
           children: [
             Row(
               children: [
-                Icon(Icons.inventory_2_outlined, size: 40, color: darkBlue),
+                Icon(Icons.inventory_2_outlined, size: 40, color: darkNavy),
                 SizedBox(width: 10),
                 Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                   Text("Help Center", style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
-                  Text("Something looking for you", style: TextStyle(fontSize: 12, color: darkBlue)),
+                  Text("Something looking for you", style: TextStyle(fontSize: 12, color: darkNavy)),
                 ])
               ],
             ),
@@ -60,13 +61,13 @@ class HelpScreen extends StatelessWidget {
               children: [
                 ElevatedButton(
                   onPressed: () {},
-                  style: ElevatedButton.styleFrom(backgroundColor: darkBlue),
+                  style: ElevatedButton.styleFrom(backgroundColor: darkNavy),
                   child: Text("Undo", style: TextStyle(color: Colors.white)),
                 ),
                 SizedBox(width: 10),
                 ElevatedButton(
                   onPressed: () {},
-                  style: ElevatedButton.styleFrom(backgroundColor: darkBlue),
+                  style: ElevatedButton.styleFrom(backgroundColor: darkNavy),
                   child: Text("Send", style: TextStyle(color: Colors.white)),
                 ),
               ],

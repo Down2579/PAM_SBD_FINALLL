@@ -21,12 +21,16 @@ class _RegisterScreenState extends State<RegisterScreen> {
   bool _isPasswordVisible = false;
 
   // Colors Palette
-  final Color darkBlue = const Color(0xFF2B4263);
-  final Color textDark = const Color(0xFF1F1F1F);
+  final Color primaryBg = const Color(0xFFF5F7FA);
+  final Color darkNavy = const Color(0xFF2B4263);
+  final Color accentBlue = const Color(0xFF4A90E2);
+  final Color textDark = const Color(0xFF1F2937);
+  final Color textSecondary = const Color(0xFF6B7280);
   
   // Warna Gradasi Background
-  final Color bgTop = const Color(0xFFD0E8FF); 
-  final Color bgBottom = const Color(0xFF9CCBF9);
+  final Color bgTop = const Color(0xFFF5F7FA); 
+  final Color bgMiddle = const Color(0xFF2B4263);
+  final Color bgBottom = const Color(0xFF4A90E2);
 
   @override
   Widget build(BuildContext context) {
@@ -38,9 +42,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
         height: double.infinity,
         decoration: BoxDecoration(
           gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [bgTop, bgBottom],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [bgTop, bgMiddle, bgBottom],
+            stops: const [0.0, 0.5, 1.0],
           ),
         ),
         child: SafeArea(
@@ -159,7 +164,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
                     // ================= BUTTON REGISTER =================
                     auth.isLoading
-                        ? Center(child: CircularProgressIndicator(color: darkBlue))
+                        ? Center(child: CircularProgressIndicator(color: darkNavy))
                         : SizedBox(
                             width: double.infinity,
                             height: 55,
@@ -195,9 +200,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                 }
                               },
                               style: ElevatedButton.styleFrom(
-                                backgroundColor: darkBlue,
+                                backgroundColor: darkNavy,
                                 elevation: 5,
-                                shadowColor: darkBlue.withOpacity(0.4),
+                                shadowColor: darkNavy.withOpacity(0.4),
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(16),
                                 ),
@@ -232,7 +237,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             child: Text(
                               "Sign in",
                               style: TextStyle(
-                                color: darkBlue,
+                                color: darkNavy,
                                 fontWeight: FontWeight.bold,
                                 fontSize: 14,
                               ),

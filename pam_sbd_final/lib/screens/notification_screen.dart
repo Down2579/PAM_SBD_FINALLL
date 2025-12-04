@@ -16,9 +16,10 @@ class _NotificationScreenState extends State<NotificationScreen> {
     "Your new post has been created",
   ];
 
-  final Color darkBlue = const Color(0xFF2B4263);
-  final Color textDark = const Color(0xFF1F1F1F);
-  final Color bubbleColor = const Color(0xFFE8E8E8);
+  final Color darkNavy = const Color(0xFF2B4263);
+  final Color accentBlue = const Color(0xFF4A90E2);
+  final Color textDark = const Color(0xFF1F2937);
+  final Color bubbleColor = const Color(0xFFE8EEF5);
 
   @override
   Widget build(BuildContext context) {
@@ -93,11 +94,17 @@ class _NotificationScreenState extends State<NotificationScreen> {
         onTap: (index) {
           if (index == 0) {
             Navigator.pushAndRemoveUntil(context, MaterialPageRoute(builder: (_) => HomeScreen()), (route) => false);
+          } else if (index == 1) {
+            Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => MyTaskScreen()));
+          } else if (index == 2) {
+            Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => CompletedScreen()));
+          } else if (index == 3) {
+            Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => ProfileScreen()));
           }
         },
         type: BottomNavigationBarType.fixed,
         backgroundColor: Colors.white,
-        selectedItemColor: darkBlue,
+        selectedItemColor: darkNavy,
         unselectedItemColor: Colors.grey,
         showSelectedLabels: false,
         showUnselectedLabels: false,
@@ -122,7 +129,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
           child: Image.asset(
             'assets/images/logo.png',
             errorBuilder: (context, error, stackTrace) {
-              return Icon(Icons.inventory_2_outlined, size: 48, color: darkBlue);
+              return Icon(Icons.inventory_2_outlined, size: 48, color: darkNavy);
             },
           ),
         ),
@@ -137,7 +144,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
             const SizedBox(height: 4),
             Text(
               "Something looking for you",
-              style: TextStyle(color: darkBlue, fontSize: 14, fontWeight: FontWeight.w600),
+              style: TextStyle(color: darkNavy, fontSize: 14, fontWeight: FontWeight.w600),
             ),
           ],
         )

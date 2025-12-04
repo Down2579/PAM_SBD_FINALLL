@@ -9,6 +9,7 @@ import 'all_items_screen.dart';
 import 'completed_screen.dart';
 import 'help_center_screen.dart';
 import 'notification_screen.dart'; // Import halaman Notification
+import '../widgets/notification_modal.dart';
 
 class HomeScreen extends StatefulWidget {
   @override
@@ -21,10 +22,13 @@ class _HomeScreenState extends State<HomeScreen> {
   final ApiService api = ApiService();
 
   // Palet Warna
-  final Color darkBlue = const Color(0xFF2B4263);
-  final Color textDark = const Color(0xFF1F1F1F);
-  final Color bgLightGrey = const Color(0xFFF5F5F5);
-  final Color buttonGrey = const Color(0xFFE8E8E8);
+  final Color primaryBg = const Color(0xFFF5F7FA);
+  final Color darkNavy = const Color(0xFF2B4263);
+  final Color accentBlue = const Color(0xFF4A90E2);
+  final Color textDark = const Color(0xFF1F2937);
+  final Color textSecondary = const Color(0xFF6B7280);
+  final Color bgLightGrey = const Color(0xFFF5F7FA);
+  final Color buttonGrey = const Color(0xFFE8EEF5);
 
   @override
   void initState() {
@@ -70,7 +74,7 @@ class _HomeScreenState extends State<HomeScreen> {
         },
         type: BottomNavigationBarType.fixed,
         backgroundColor: Colors.white,
-        selectedItemColor: darkBlue,
+        selectedItemColor: darkNavy,
         unselectedItemColor: Colors.grey,
         showSelectedLabels: false,
         showUnselectedLabels: false,
@@ -87,26 +91,29 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _buildDashboardPage() {
     return Scaffold(
       backgroundColor: Colors.white,
-      appBar: AppBar(
+        appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 1.0,
-        leading: Icon(Icons.menu, color: textDark, size: 28),
+        leading: IconButton(
+          icon: Icon(Icons.menu, color: textDark, size: 28),
+          onPressed: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => HelpCenterScreen()),
+            );
+          },
+        ),
         actions: [
           // ### MODIFIKASI UTAMA DI SINI ###
           Padding(
             padding: const EdgeInsets.only(right: 16.0),
             child: GestureDetector(
-              onTap: () {
-                // 2. Navigasi diubah ke NotificationScreen
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => NotificationScreen()),
-                );
+              onTap: () async {
+                await showNotificationsModal(context);
               },
               child: Stack(
                 alignment: Alignment.topRight,
                 children: [
-                  // 1. Ikon lonceng dan badge ditambahkan
                   Padding(
                     padding: const EdgeInsets.only(top: 12.0, right: 8.0),
                     child: Icon(
@@ -126,7 +133,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                     child: Center(
                       child: Text(
-                        '3', // Angka notifikasi
+                        '3',
                         style: TextStyle(
                           color: Colors.white,
                           fontSize: 10,
@@ -187,7 +194,7 @@ class _HomeScreenState extends State<HomeScreen> {
               text: TextSpan(
                 text: "Hello, ",
                 style: TextStyle(fontSize: 24, color: textDark, fontWeight: FontWeight.bold),
-                children: [TextSpan(text: "$userName!", style: TextStyle(color: darkBlue, fontWeight: FontWeight.bold))],
+                children: [TextSpan(text: "$userName!", style: TextStyle(color: darkNavy, fontWeight: FontWeight.bold))],
               ),
             ),
             Text("Looking for something?", style: TextStyle(color: Colors.grey[600], fontSize: 13)),
@@ -232,7 +239,21 @@ class _HomeScreenState extends State<HomeScreen> {
       child: Container(
         height: 150,
         padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(color: darkBlue, borderRadius: BorderRadius.circular(20)),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [darkNavy, accentBlue],
+          ),
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: darkNavy.withOpacity(0.3),
+              blurRadius: 12,
+              offset: const Offset(0, 6),
+            ),
+          ],
+        ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -275,7 +296,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildListItem(Item item) {
-    bool isLost = item.tipeLaporan?.toLowerCase() == "hilang";
+    bool isLost = item.tipeLaporan.toLowerCase() == "hilang";
     return GestureDetector(
       onTap: () {
         Navigator.push(context, MaterialPageRoute(builder: (_) => DetailScreen(item: item)));
@@ -289,7 +310,7 @@ class _HomeScreenState extends State<HomeScreen> {
             Container(
               width: 80,
               height: 90,
-              decoration: BoxDecoration(color: darkBlue, borderRadius: BorderRadius.circular(16)),
+              decoration: BoxDecoration(color: darkNavy, borderRadius: BorderRadius.circular(16)),
               child: const Icon(Icons.assignment_outlined, color: Colors.white, size: 40),
             ),
             const SizedBox(width: 16),

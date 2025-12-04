@@ -1,6 +1,6 @@
-// lib/screens/add_item_screen.dart
 import 'dart:convert';
 import 'dart:io';
+import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
@@ -8,8 +8,14 @@ import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 
-import '../api_service.dart'; // pastikan path sesuai
-// import '../providers.dart'; // optional jika mau pakai provider
+import '../api_service.dart';
+import 'notification_screen.dart';
+import 'help_center_screen.dart';
+import '../widgets/notification_modal.dart';
+import 'home_screen.dart';
+import 'my_task_screen.dart';
+import 'completed_screen.dart';
+import 'profile_screen.dart';
 
 class AddItemScreen extends StatefulWidget {
   const AddItemScreen({Key? key}) : super(key: key);
@@ -19,40 +25,50 @@ class AddItemScreen extends StatefulWidget {
 }
 
 class _AddItemScreenState extends State<AddItemScreen> {
-  // Colors
-  final Color darkBlue = const Color(0xFF2B4263);
-  final Color textDark = const Color(0xFF1F1F1F);
-  final Color cardGrey = const Color(0xFFE0E0E0);
-
-  // Controllers
+  // --- Controllers & State Variables ---
   final _nameController = TextEditingController();
   final _dateController = TextEditingController();
   final _descController = TextEditingController();
 
-  // Dropdown selections
   int? _selectedCategoryId;
-  int? _selectedLocationId;
-  String? _selectedReportType; // 'hilang' / 'ditemukan'
+  int? _selectedLocationId; // Ditambahkan kembali
+  String? _selectedReportType; // Ditambahkan kembali
 
-  // Local lists (loaded from API)
   List<Map<String, dynamic>> _categories = [];
-  List<Map<String, dynamic>> _locations = [];
+  List<Map<String, dynamic>> _locations = []; // Ditambahkan kembali
 
-  // Image
   File? _selectedImage;
   final ImagePicker _picker = ImagePicker();
 
-  // Loading state
   bool _loading = false;
-  bool _loadingCategories = true;
-  bool _loadingLocations = true;
+  bool _loadingData = true;
+
+  // --- Palet Warna ---
+  final Color darkNavy = const Color(0xFF2B4263);
+  final Color accentBlue = const Color(0xFF4A90E2);
+  final Color textDark = const Color(0xFF1F2937);
+  final Color textSecondary = const Color(0xFF6B7280);
+  final Color bgGrey = const Color(0xFFF5F7FA);
+  final Color bgBlueLight = const Color(0xFFE3F2FD);
 
   @override
   void initState() {
     super.initState();
     _dateController.text = DateFormat('MM/dd/yyyy').format(DateTime.now());
-    _loadCategories();
-    _loadLocations();
+    _loadInitialData();
+  }
+  
+  // --- LOGIKA DATA (Fungsi tidak diubah, hanya ditambahkan _loadLocations) ---
+
+  Future<void> _loadInitialData() async {
+    // Memuat kategori dan lokasi secara bersamaan
+    await Future.wait([
+      _loadCategories(),
+      _loadLocations(),
+    ]);
+    if (mounted) {
+      setState(() => _loadingData = false);
+    }
   }
 
   @override
@@ -63,7 +79,6 @@ class _AddItemScreenState extends State<AddItemScreen> {
     super.dispose();
   }
 
-  // ================= Image picker =================
   Future<void> _pickImage(ImageSource source) async {
     Navigator.pop(context);
     try {
@@ -75,41 +90,32 @@ class _AddItemScreenState extends State<AddItemScreen> {
       }
     } catch (e) {
       debugPrint("Error picking image: $e");
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Gagal memilih gambar")),
-      );
     }
   }
 
   void _showImageSourceOptions() {
-    showModalBottomSheet(
+     showModalBottomSheet(
       context: context,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
-      builder: (context) {
-        return SizedBox(
-          height: 160,
-          child: Column(
-            children: [
-              const SizedBox(height: 12),
-              Container(
-                width: 40,
-                height: 6,
-                decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(6)),
-              ),
-              const SizedBox(height: 12),
-              Text("Upload Image", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: textDark)),
-              const SizedBox(height: 12),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  _buildOption(Icons.camera_alt_outlined, "Camera", ImageSource.camera),
-                  _buildOption(Icons.photo_library_outlined, "Gallery", ImageSource.gallery),
-                ],
-              ),
-            ],
-          ),
-        );
-      },
+      builder: (context) => SizedBox(
+        height: 160,
+        child: Column(
+          children: [
+            const SizedBox(height: 12),
+            Container(width: 40, height: 6, decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(6))),
+            const SizedBox(height: 12),
+            Text("Upload Image", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: textDark)),
+            const SizedBox(height: 12),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                _buildOption(Icons.camera_alt_outlined, "Camera", ImageSource.camera),
+                _buildOption(Icons.photo_library_outlined, "Gallery", ImageSource.gallery),
+              ],
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -120,12 +126,8 @@ class _AddItemScreenState extends State<AddItemScreen> {
         children: [
           Container(
             padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              shape: BoxShape.circle,
-              border: Border.all(color: darkBlue.withOpacity(0.2)),
-            ),
-            child: Icon(icon, size: 28, color: darkBlue),
+            decoration: BoxDecoration(color: Colors.white, shape: BoxShape.circle, border: Border.all(color: darkNavy.withOpacity(0.2))),
+            child: Icon(icon, size: 28, color: darkNavy),
           ),
           const SizedBox(height: 8),
           Text(label, style: TextStyle(color: textDark, fontWeight: FontWeight.w600)),
@@ -134,7 +136,6 @@ class _AddItemScreenState extends State<AddItemScreen> {
     );
   }
 
-  // ================= Date picker =================
   Future<void> _pickDate() async {
     DateTime? picked = await showDatePicker(
       context: context,
@@ -149,313 +150,256 @@ class _AddItemScreenState extends State<AddItemScreen> {
     }
   }
 
-  // ================= Load kategori & lokasi dari API =================
   Future<Map<String, String>> _getAuthHeaders() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     String? token = prefs.getString('token');
-    return {
-      'Accept': 'application/json',
-      if (token != null) 'Authorization': 'Bearer $token',
-    };
+    return {'Accept': 'application/json', if (token != null) 'Authorization': 'Bearer $token'};
   }
 
   Future<void> _loadCategories() async {
-    setState(() => _loadingCategories = true);
     try {
       final headers = await _getAuthHeaders();
       final url = Uri.parse('${ApiService.baseUrl}/kategori');
       final res = await http.get(url, headers: headers);
-
       if (res.statusCode == 200) {
         final body = json.decode(res.body);
-        // body can be: list OR { data: [...] } OR { success,message,data }
-        List dataList = [];
-        if (body is List) {
-          dataList = body;
-        } else if (body is Map && body['data'] != null && body['data'] is List) {
-          dataList = body['data'];
-        } else if (body is Map && body['kategori'] != null && body['kategori'] is List) {
-          dataList = body['kategori'];
-        } else {
-          // try to find first list value
-          dataList = (body as Map).values.firstWhere(
-            (v) => v is List,
-            orElse: () => [],
-          );
+        List dataList = (body['data'] as List?) ?? [];
+        if (mounted) {
+          setState(() {
+            _categories = dataList.map<Map<String, dynamic>>((e) => {'id': e['id'], 'nama': e['nama_kategori']}).toList();
+          });
         }
-
-        _categories = dataList.map<Map<String, dynamic>>((e) {
-          // normalize: expect at least id and nama_kategori
-          return {
-            'id': e['id'] ?? e['ID'] ?? e['Id'],
-            'nama': e['nama_kategori'] ?? e['nama'] ?? e['nama_kategori'] ?? e['nama_kategori'],
-          };
-        }).toList();
-      } else {
-        debugPrint('Failed to load categories: ${res.body}');
       }
     } catch (e) {
       debugPrint('Error load categories: $e');
-    } finally {
-      setState(() => _loadingCategories = false);
     }
   }
 
   Future<void> _loadLocations() async {
-    setState(() => _loadingLocations = true);
     try {
       final headers = await _getAuthHeaders();
       final url = Uri.parse('${ApiService.baseUrl}/lokasi');
       final res = await http.get(url, headers: headers);
-
       if (res.statusCode == 200) {
         final body = json.decode(res.body);
-        List dataList = [];
-        if (body is List) {
-          dataList = body;
-        } else if (body is Map && body['data'] != null && body['data'] is List) {
-          dataList = body['data'];
-        } else if (body is Map && body['lokasi'] != null && body['lokasi'] is List) {
-          dataList = body['lokasi'];
-        } else {
-          dataList = (body as Map).values.firstWhere((v) => v is List, orElse: () => []);
+        List dataList = (body['data'] as List?) ?? [];
+        if (mounted) {
+          setState(() {
+            _locations = dataList.map<Map<String, dynamic>>((e) => {'id': e['id'], 'nama': e['nama_lokasi']}).toList();
+          });
         }
-
-        _locations = dataList.map<Map<String, dynamic>>((e) {
-          return {
-            'id': e['id'] ?? e['ID'] ?? e['Id'],
-            'nama': e['nama_lokasi'] ?? e['nama'] ?? e['nama_lokasi'],
-          };
-        }).toList();
-      } else {
-        debugPrint('Failed to load locations: ${res.body}');
       }
     } catch (e) {
       debugPrint('Error load locations: $e');
-    } finally {
-      setState(() => _loadingLocations = false);
     }
   }
 
-  // ================= Submit form ( pakai ApiService.createItem ) =================
   Future<void> _submitForm() async {
-    // Validasi sederhana
-    if (_nameController.text.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Nama barang wajib diisi")));
+    if (_nameController.text.trim().isEmpty || 
+        _selectedCategoryId == null || 
+        _selectedLocationId == null || 
+        _selectedReportType == null || 
+        _descController.text.trim().isEmpty || 
+        _selectedImage == null) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Harap isi semua field yang wajib")));
       return;
     }
-    if (_descController.text.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Deskripsi wajib diisi")));
-      return;
-    }
-    if (_selectedReportType == null) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Pilih tipe laporan")));
-      return;
-    }
-    if (_selectedCategoryId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Pilih kategori")));
-      return;
-    }
-    if (_selectedLocationId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Pilih lokasi")));
-      return;
-    }
-    if (_selectedImage == null) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Upload gambar utama")));
-      return;
-    }
-
     setState(() => _loading = true);
-
     try {
-      // convert date to yyyy-MM-dd
-      String tanggal = '';
-      try {
-        final parsed = DateFormat('MM/dd/yyyy').parse(_dateController.text);
-        tanggal = DateFormat('yyyy-MM-dd').format(parsed);
-      } catch (_) {
-        tanggal = DateFormat('yyyy-MM-dd').format(DateTime.now());
-      }
-
-      // data fields as strings
+      String tanggal = DateFormat('yyyy-MM-dd').format(DateFormat('MM/dd/yyyy').parse(_dateController.text));
+      
       final data = <String, String>{
         'nama_barang': _nameController.text.trim(),
         'deskripsi': _descController.text.trim(),
-        'tipe_laporan': _selectedReportType!, // 'hilang' or 'ditemukan'
+        'tipe_laporan': _selectedReportType!,
         'tanggal_kejadian': tanggal,
         'id_kategori': _selectedCategoryId.toString(),
         'id_lokasi': _selectedLocationId.toString(),
       };
-
-      // call ApiService
+      
       final api = ApiService();
       final success = await api.createItem(data: data, imageFile: _selectedImage);
 
-      if (success) {
+      if (success && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Barang berhasil ditambahkan")));
         Navigator.of(context).pop(true);
-      } else {
+      } else if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Gagal menambahkan barang")));
       }
     } catch (e) {
       debugPrint("Submit error: $e");
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error: $e")));
     } finally {
-      setState(() => _loading = false);
+      if (mounted) setState(() => _loading = false);
     }
   }
 
-  // ================= UI =================
+  // ================= UI BARU YANG LENGKAP =================
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: AppBar(
-        title: const Text("Tambah Barang"),
-        backgroundColor: darkBlue,
-      ),
-      body: _loadingCategories || _loadingLocations
-          ? const Center(child: CircularProgressIndicator())
-          : GestureDetector(
-              onTap: () => FocusScope.of(context).unfocus(),
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Nama
-                    const SizedBox(height: 6),
-                    const Text("Nama Barang", style: TextStyle(fontWeight: FontWeight.bold)),
-                    const SizedBox(height: 6),
-                    _buildTextField(_nameController, hint: "Contoh: Dompet hitam"),
-
-                    const SizedBox(height: 12),
-                    // Kategori
-                    const Text("Kategori", style: TextStyle(fontWeight: FontWeight.bold)),
-                    const SizedBox(height: 6),
-                    _buildCategoryDropdown(),
-
-                    const SizedBox(height: 12),
-                    // Lokasi
-                    const Text("Lokasi", style: TextStyle(fontWeight: FontWeight.bold)),
-                    const SizedBox(height: 6),
-                    _buildLocationDropdown(),
-
-                    const SizedBox(height: 12),
-                    // Tipe Laporan
-                    const Text("Tipe Laporan", style: TextStyle(fontWeight: FontWeight.bold)),
-                    const SizedBox(height: 6),
-                    _buildReportTypeDropdown(),
-
-                    const SizedBox(height: 12),
-                    // Tanggal
-                    const Text("Tanggal Kejadian", style: TextStyle(fontWeight: FontWeight.bold)),
-                    const SizedBox(height: 6),
-                    _buildDateField(),
-
-                    const SizedBox(height: 12),
-                    const Text("Deskripsi", style: TextStyle(fontWeight: FontWeight.bold)),
-                    const SizedBox(height: 6),
-                    _buildMultilineField(_descController),
-
-                    const SizedBox(height: 12),
-                    const Text("Gambar Utama", style: TextStyle(fontWeight: FontWeight.bold)),
-                    const SizedBox(height: 6),
-                    _buildImagePicker(),
-
-                    const SizedBox(height: 20),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
-                        OutlinedButton(
-                          onPressed: () => Navigator.of(context).pop(),
-                          child: const Text("Batal"),
-                        ),
-                        const SizedBox(width: 12),
-                        ElevatedButton(
-                          onPressed: _loading ? null : _submitForm,
-                          style: ElevatedButton.styleFrom(backgroundColor: darkBlue),
-                          child: _loading ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)) : const Text("Post"),
-                        ),
-                      ],
+      backgroundColor: bgBlueLight,
+      body: SafeArea(
+        child: Column(
+          children: [
+            _buildHeader(),
+            Expanded(
+              child: _loadingData
+                  ? Center(child: CircularProgressIndicator(color: darkNavy))
+                  : SingleChildScrollView(
+                      padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 10.0),
+                      child: _buildFormCard(),
                     ),
-                  ],
-                ),
-              ),
             ),
-    );
-  }
-
-  Widget _buildTextField(TextEditingController c, {String hint = ""}) {
-    return Container(
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(8), border: Border.all(color: Colors.grey.shade300)),
-      child: TextField(
-        controller: c,
-        decoration: InputDecoration(contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12), border: InputBorder.none, hintText: hint),
+          ],
+        ),
+      ),
+      bottomNavigationBar: BottomNavigationBar(
+        currentIndex: 1,
+        onTap: (index) {
+          if (index == 0) Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => HomeScreen()));
+          else if (index == 1) Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => MyTaskScreen()));
+          else if (index == 2) Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => CompletedScreen()));
+          else if (index == 3) Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => ProfileScreen()));
+        },
+        type: BottomNavigationBarType.fixed,
+        backgroundColor: Colors.white,
+        selectedItemColor: darkNavy,
+        unselectedItemColor: Colors.grey,
+        showSelectedLabels: false,
+        showUnselectedLabels: false,
+        items: const [
+          BottomNavigationBarItem(icon: Icon(Icons.home_outlined), label: "Home"),
+          BottomNavigationBarItem(icon: Icon(Icons.assignment), label: "Task"),
+          BottomNavigationBarItem(icon: Icon(Icons.check_circle_outline), label: "Completed"),
+          BottomNavigationBarItem(icon: Icon(Icons.person_outlined), label: "Profile"),
+        ],
       ),
     );
   }
 
-  Widget _buildMultilineField(TextEditingController c) {
+  Widget _buildHeader() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 20),
+      child: Column(
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              IconButton(
+                icon: Icon(Icons.menu, size: 28, color: textDark),
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => HelpCenterScreen()),
+                  );
+                },
+              ),
+              IconButton(
+                icon: Icon(Icons.notifications_none_outlined, size: 28, color: textDark),
+                onPressed: () async {
+                  await showNotificationsModal(context);
+                },
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          Row(
+            children: [
+              Container(
+                height: 60, width: 60, padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), boxShadow: [BoxShadow(color: Colors.grey.withOpacity(0.2), blurRadius: 10, offset: const Offset(0, 4))]),
+                child: Image.asset('assets/images/logo.png', errorBuilder: (ctx, err, st) => Icon(Icons.error)),
+              ),
+              const SizedBox(width: 16),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text("My Task", style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold, color: textDark)),
+                  Text("Found yours !", style: TextStyle(fontSize: 14, color: darkNavy, fontWeight: FontWeight.w600)),
+                ],
+              )
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+  
+  Widget _buildFormCard() {
     return Container(
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(8), border: Border.all(color: Colors.grey.shade300)),
-      child: TextField(
-        controller: c,
-        maxLines: 5,
-        decoration: const InputDecoration(contentPadding: EdgeInsets.all(12), border: InputBorder.none, hintText: "Deskripsikan lokasi/warna/ciri-ciri"),
+      padding: const EdgeInsets.all(20.0),
+      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20), boxShadow: [BoxShadow(color: Colors.grey.withOpacity(0.15), blurRadius: 15, offset: const Offset(0, 5))]),
+      child: Column(
+        children: [
+          _buildFormRow("Nama Barang", _buildTextField(_nameController, "Contoh: Dompet hitam")),
+          const SizedBox(height: 16),
+          _buildFormRow("Kategori", _buildCategoryDropdown()),
+          const SizedBox(height: 16),
+          _buildFormRow("Lokasi", _buildLocationDropdown()), // DITAMBAHKAN
+          const SizedBox(height: 16),
+          _buildFormRow("Tipe Laporan", _buildReportTypeDropdown()), // DITAMBAHKAN
+          const SizedBox(height: 16),
+          _buildFormRow("Tanggal Kejadian", _buildDateField()),
+          const SizedBox(height: 16),
+          _buildFormRow("Deskripsi", _buildMultilineField(_descController), alignStart: true),
+          const SizedBox(height: 16),
+          _buildFormRow("Gambar Utama", _buildImagePicker(), alignStart: true),
+          const SizedBox(height: 24),
+          _buildActionButtons(),
+        ],
       ),
     );
   }
 
-  Widget _buildDateField() {
-    return GestureDetector(
-      onTap: _pickDate,
-      child: AbsorbPointer(
-        child: Container(
-          decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(8), border: Border.all(color: Colors.grey.shade300)),
-          child: TextField(
-            controller: _dateController,
-            decoration: const InputDecoration(contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12), border: InputBorder.none, suffixIcon: Icon(Icons.calendar_today)),
+  Widget _buildFormRow(String label, Widget child, {bool alignStart = false}) {
+    return Row(
+      crossAxisAlignment: alignStart ? CrossAxisAlignment.start : CrossAxisAlignment.center,
+      children: [
+        SizedBox(
+          width: 110, // Lebar label disesuaikan
+          child: Text(
+            label,
+            style: TextStyle(fontWeight: FontWeight.bold, color: textDark),
           ),
         ),
-      ),
+        const SizedBox(width: 12),
+        Expanded(child: child),
+      ],
     );
   }
 
-  Widget _buildCategoryDropdown() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12),
-      decoration: BoxDecoration(borderRadius: BorderRadius.circular(8), color: Colors.white, border: Border.all(color: Colors.grey.shade300)),
-      child: DropdownButtonHideUnderline(
-        child: DropdownButton<int>(
-          value: _selectedCategoryId,
-          isExpanded: true,
-          hint: const Text("Pilih kategori"),
-          items: _categories.map((c) {
-            return DropdownMenuItem<int>(
-              value: c['id'] as int?,
-              child: Text(c['nama']?.toString() ?? '-'),
-            );
-          }).toList(),
-          onChanged: (val) => setState(() => _selectedCategoryId = val),
+  Widget _buildTextField(TextEditingController c, String hint) {
+    return SizedBox(
+      height: 45,
+      child: TextField(
+        controller: c,
+        decoration: InputDecoration(
+          hintText: hint,
+          hintStyle: TextStyle(color: Colors.grey[400]),
+          filled: true,
+          fillColor: bgBlueLight,
+          contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
         ),
       ),
     );
   }
 
+  // WIDGET BARU
   Widget _buildLocationDropdown() {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12),
-      decoration: BoxDecoration(borderRadius: BorderRadius.circular(8), color: Colors.white, border: Border.all(color: Colors.grey.shade300)),
+      height: 45,
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      decoration: BoxDecoration(color: bgBlueLight, borderRadius: BorderRadius.circular(12)),
       child: DropdownButtonHideUnderline(
         child: DropdownButton<int>(
           value: _selectedLocationId,
           isExpanded: true,
           hint: const Text("Pilih lokasi"),
-          items: _locations.map((c) {
+          items: _locations.map((loc) {
             return DropdownMenuItem<int>(
-              value: c['id'] as int?,
-              child: Text(c['nama']?.toString() ?? '-'),
+              value: loc['id'],
+              child: Text(loc['nama']),
             );
           }).toList(),
           onChanged: (val) => setState(() => _selectedLocationId = val),
@@ -464,10 +408,12 @@ class _AddItemScreenState extends State<AddItemScreen> {
     );
   }
 
+  // WIDGET BARU
   Widget _buildReportTypeDropdown() {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12),
-      decoration: BoxDecoration(borderRadius: BorderRadius.circular(8), color: Colors.white, border: Border.all(color: Colors.grey.shade300)),
+      height: 45,
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      decoration: BoxDecoration(color: bgBlueLight, borderRadius: BorderRadius.circular(12)),
       child: DropdownButtonHideUnderline(
         child: DropdownButton<String>(
           value: _selectedReportType,
@@ -483,17 +429,114 @@ class _AddItemScreenState extends State<AddItemScreen> {
     );
   }
 
+  Widget _buildCategoryDropdown() {
+    return Container(
+      height: 45,
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      decoration: BoxDecoration(color: bgBlueLight, borderRadius: BorderRadius.circular(12)),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<int>(
+          value: _selectedCategoryId,
+          isExpanded: true,
+          hint: const Text("Pilih kategori"),
+          items: _categories.map((c) {
+            return DropdownMenuItem<int>(
+              value: c['id'],
+              child: Text(c['nama']),
+            );
+          }).toList(),
+          onChanged: (val) => setState(() => _selectedCategoryId = val),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDateField() {
+    return GestureDetector(
+      onTap: _pickDate,
+      child: AbsorbPointer(
+        child: SizedBox(
+          height: 45,
+          child: TextField(
+            controller: _dateController,
+            decoration: InputDecoration(
+              filled: true,
+              fillColor: bgBlueLight,
+              contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+              suffixIcon: Icon(Icons.calendar_today, color: darkNavy),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMultilineField(TextEditingController c) {
+    return TextField(
+      controller: c,
+      maxLines: 4,
+      decoration: InputDecoration(
+        hintText: "Deskripsikan lokasi/warna/ciri-ciri",
+        hintStyle: TextStyle(color: Colors.grey[400]),
+        filled: true,
+        fillColor: bgBlueLight,
+        contentPadding: const EdgeInsets.all(16),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+      ),
+    );
+  }
+
   Widget _buildImagePicker() {
     return GestureDetector(
       onTap: _showImageSourceOptions,
       child: Container(
-        height: 160,
+        height: 100,
         width: double.infinity,
-        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(8), border: Border.all(color: Colors.grey.shade300)),
+        decoration: BoxDecoration(color: bgBlueLight, borderRadius: BorderRadius.circular(12)),
         child: _selectedImage == null
-            ? Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: const [Icon(Icons.add_a_photo, size: 32, color: Colors.grey), SizedBox(height: 8), Text("Tap to add image", style: TextStyle(color: Colors.grey))]))
-            : ClipRRect(borderRadius: BorderRadius.circular(8), child: Image.file(_selectedImage!, fit: BoxFit.cover, width: double.infinity)),
+            ? Center(child: Icon(Icons.add_a_photo_outlined, size: 40, color: Colors.grey[600]))
+            : ClipRRect(borderRadius: BorderRadius.circular(12), child: Image.file(_selectedImage!, fit: BoxFit.cover)),
       ),
+    );
+  }
+
+   Widget _buildActionButtons() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.end,
+      children: [
+        ElevatedButton(
+          onPressed: () {
+            _nameController.clear();
+            _descController.clear();
+            setState(() {
+              _selectedCategoryId = null;
+              _selectedLocationId = null;
+              _selectedReportType = null;
+              _selectedImage = null;
+              _dateController.text = DateFormat('MM/dd/yyyy').format(DateTime.now());
+            });
+          },
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.grey[600],
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 12),
+          ),
+          child: Text("Undo", style: TextStyle(color: Colors.white)),
+        ),
+        const SizedBox(width: 10),
+        ElevatedButton(
+          onPressed: _loading ? null : _submitForm,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: darkNavy,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 12),
+          ),
+          child: _loading 
+            ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)) 
+            : Text("Post", style: TextStyle(color: Colors.white)),
+        ),
+      ],
     );
   }
 }

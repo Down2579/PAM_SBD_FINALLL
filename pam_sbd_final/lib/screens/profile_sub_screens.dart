@@ -6,9 +6,11 @@ import '../models.dart';
 import 'detail_screen.dart'; // Untuk Riwayat
 
 // Warna Tema
-const Color darkBlue = Color(0xFF2B4263);
-const Color textDark = Color(0xFF1F1F1F);
-const Color bgGrey = Color(0xFFF5F5F5);
+const Color darkNavy = Color(0xFF2B4263);
+const Color accentBlue = Color(0xFF4A90E2);
+const Color textDark = Color(0xFF1F2937);
+const Color textSecondary = Color(0xFF6B7280);
+const Color bgGrey = Color(0xFFF5F7FA);
 
 // ================= 1. HALAMAN EDIT PROFILE =================
 class EditProfileScreen extends StatefulWidget {
@@ -77,7 +79,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                     }
                   },
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: darkBlue,
+                    backgroundColor: darkNavy,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   ),
                   child: auth.isLoading 
@@ -97,11 +99,11 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       controller: controller,
       decoration: InputDecoration(
         labelText: label,
-        prefixIcon: Icon(icon, color: darkBlue),
+        prefixIcon: Icon(icon, color: darkNavy),
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: darkBlue, width: 2)
+          borderSide: BorderSide(color: darkNavy, width: 2)
         )
       ),
       validator: (val) => val!.isEmpty ? "$label tidak boleh kosong" : null,
@@ -205,7 +207,7 @@ class NotificationScreen extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(Icons.notifications, color: darkBlue, size: 28),
+          Icon(Icons.notifications, color: darkNavy, size: 28),
           SizedBox(width: 15),
           Expanded(
             child: Column(
@@ -253,12 +255,12 @@ class HelpScreen extends StatelessWidget {
             Text("Hubungi Kami", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
             SizedBox(height: 15),
             ListTile(
-              leading: Icon(Icons.email, color: darkBlue),
+              leading: Icon(Icons.email, color: darkNavy),
               title: Text("Email Support"),
               subtitle: Text("help@upn.ac.id"),
             ),
             ListTile(
-              leading: Icon(Icons.phone, color: darkBlue),
+              leading: Icon(Icons.phone, color: darkNavy),
               title: Text("Call Center"),
               subtitle: Text("021-12345678"),
             ),

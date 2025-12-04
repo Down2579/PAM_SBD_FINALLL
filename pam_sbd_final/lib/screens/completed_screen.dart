@@ -1,6 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart'; // <-- PENTING: Untuk membaca data
+import 'notification_screen.dart';
 import 'help_center_screen.dart';
+import '../widgets/notification_modal.dart';
+import 'home_screen.dart';
+import 'my_task_screen.dart';
+import 'profile_screen.dart';
 
 // --- DATA MODEL UNTUK ITEM YANG SELESAI ---
 class CompletedItem {
@@ -22,11 +27,12 @@ class CompletedScreen extends StatefulWidget {
 
 class _CompletedScreenState extends State<CompletedScreen> {
   // --- PALET WARNA ---
-  final Color darkBlue = const Color(0xFF2B4263);
-  final Color textDark = const Color(0xFF1F1F1F);
-  final Color textLight = const Color(0xFF6D6D6D);
-  final Color bgLightGrey = const Color(0xFFF5F5F5);
-  final Color completedGreen = const Color(0xFF4CAF50);
+  final Color darkNavy = const Color(0xFF2B4263);
+  final Color accentBlue = const Color(0xFF4A90E2);
+  final Color textDark = const Color(0xFF1F2937);
+  final Color textLight = const Color(0xFF6B7280);
+  final Color bgLightGrey = const Color(0xFFF5F7FA);
+  final Color completedGreen = const Color(0xFF10B981);
 
   // --- DATA DUMMY ---
   final List<CompletedItem> completedItems = [
@@ -61,27 +67,51 @@ class _CompletedScreenState extends State<CompletedScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        _buildCustomHeader(),
-        Expanded(
-          child: ListView(
-            padding: const EdgeInsets.symmetric(horizontal: 24.0),
-            children: [
-              _buildWelcomeHeader(),
-              const SizedBox(height: 24),
-              Text(
-                "Completed!",
-                style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: textDark),
-              ),
-              const SizedBox(height: 16),
-              Column(
-                children: completedItems.map((item) => _buildCompletedItem(item)).toList(),
-              ),
-            ],
+    return Scaffold(
+      backgroundColor: Colors.white,
+      body: Column(
+        children: [
+          _buildCustomHeader(),
+          Expanded(
+            child: ListView(
+              padding: const EdgeInsets.symmetric(horizontal: 24.0),
+              children: [
+                _buildWelcomeHeader(),
+                const SizedBox(height: 24),
+                Text(
+                  "Completed!",
+                  style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: textDark),
+                ),
+                const SizedBox(height: 16),
+                Column(
+                  children: completedItems.map((item) => _buildCompletedItem(item)).toList(),
+                ),
+              ],
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
+      bottomNavigationBar: BottomNavigationBar(
+        currentIndex: 2,
+        onTap: (index) {
+          if (index == 0) Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => HomeScreen()));
+          else if (index == 1) Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => MyTaskScreen()));
+          else if (index == 2) Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => CompletedScreen()));
+          else if (index == 3) Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => ProfileScreen()));
+        },
+        type: BottomNavigationBarType.fixed,
+        backgroundColor: Colors.white,
+        selectedItemColor: darkNavy,
+        unselectedItemColor: Colors.grey,
+        showSelectedLabels: false,
+        showUnselectedLabels: false,
+        items: const [
+          BottomNavigationBarItem(icon: Icon(Icons.home_outlined), label: "Home"),
+          BottomNavigationBarItem(icon: Icon(Icons.assignment_outlined), label: "Task"),
+          BottomNavigationBarItem(icon: Icon(Icons.check_circle_outline), label: "Completed"),
+          BottomNavigationBarItem(icon: Icon(Icons.person_outlined), label: "Profile"),
+        ],
+      ),
     );
   }
 
@@ -96,14 +126,19 @@ class _CompletedScreenState extends State<CompletedScreen> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Icon(Icons.menu, color: textDark, size: 28),
           IconButton(
-            icon: Icon(Icons.notifications_none_outlined, color: textDark, size: 28),
+            icon: Icon(Icons.menu, color: textDark, size: 28),
             onPressed: () {
               Navigator.push(
                 context,
                 MaterialPageRoute(builder: (context) => HelpCenterScreen()),
               );
+            },
+          ),
+          IconButton(
+            icon: Icon(Icons.notifications_none_outlined, color: textDark, size: 28),
+            onPressed: () async {
+              await showNotificationsModal(context);
             },
           ),
         ],
@@ -121,7 +156,7 @@ class _CompletedScreenState extends State<CompletedScreen> {
           child: Image.asset(
             'assets/images/logo.png',
             errorBuilder: (context, error, stackTrace) {
-              return Icon(Icons.inventory_2_outlined, size: 48, color: darkBlue);
+              return Icon(Icons.inventory_2_outlined, size: 48, color: darkNavy);
             },
           ),
         ),
@@ -135,7 +170,7 @@ class _CompletedScreenState extends State<CompletedScreen> {
                 style: TextStyle(fontSize: 24, color: textDark, fontWeight: FontWeight.bold),
                 // ================= MODIFIKASI DI SINI =================
                 // Teks sekarang mengambil dari variabel `userName`
-                children: [TextSpan(text: "$userName!", style: TextStyle(color: darkBlue, fontWeight: FontWeight.bold))],
+                children: [TextSpan(text: "$userName!", style: TextStyle(color: darkNavy, fontWeight: FontWeight.bold))],
               ),
             ),
             const SizedBox(height: 4),
@@ -167,7 +202,7 @@ class _CompletedScreenState extends State<CompletedScreen> {
           Container(
             width: 80,
             height: 90,
-            decoration: BoxDecoration(color: darkBlue, borderRadius: BorderRadius.circular(16)),
+            decoration: BoxDecoration(color: darkNavy, borderRadius: BorderRadius.circular(16)),
             child: const Icon(Icons.assignment_outlined, color: Colors.white, size: 40),
           ),
           const SizedBox(width: 16),
@@ -200,4 +235,4 @@ class _CompletedScreenState extends State<CompletedScreen> {
       ),
     );
   }
-}
+} 

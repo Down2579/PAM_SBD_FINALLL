@@ -16,17 +16,11 @@ class _LoginScreenState extends State<LoginScreen> {
 
   bool _isPasswordVisible = false;
 
-  final Color primaryBg = const Color(0xFFF5F7FA);
-  final Color darkNavy = const Color(0xFF2B4263);
-  final Color accentBlue = const Color(0xFF4A90E2);
-  final Color textDark = const Color(0xFF1F2937);
-  final Color textSecondary = const Color(0xFF6B7280);
-  final Color successGreen = const Color(0xFF10B981);
-  final Color errorRed = const Color(0xFFEF4444);
+  final Color darkBlue = const Color(0xFF2B4263);
+  final Color textDark = const Color(0xFF1F1F1F);
 
-  final Color bgTop = const Color(0xFFF5F7FA);
-  final Color bgMiddle = const Color(0xFF2B4263);
-  final Color bgBottom = const Color(0xFF4A90E2);
+  final Color bgTop = const Color(0xFFD0E8FF);
+  final Color bgBottom = const Color(0xFF9CCBF9);
 
   @override
   Widget build(BuildContext context) {
@@ -38,10 +32,9 @@ class _LoginScreenState extends State<LoginScreen> {
         height: double.infinity,
         decoration: BoxDecoration(
           gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [bgTop, bgMiddle, bgBottom],
-            stops: const [0.0, 0.5, 1.0],
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [bgTop, bgBottom],
           ),
         ),
         child: SafeArea(
@@ -70,7 +63,7 @@ class _LoginScreenState extends State<LoginScreen> {
                               fit: BoxFit.contain,
                               errorBuilder: (context, error, stackTrace) {
                                 return Icon(Icons.inventory_2_outlined,
-                                    size: 80, color: darkNavy);
+                                    size: 80, color: darkBlue);
                               },
                             ),
                           ),
@@ -138,87 +131,63 @@ class _LoginScreenState extends State<LoginScreen> {
                           auth.isLoading
                               ? Center(
                                   child: CircularProgressIndicator(
-                                      color: Colors.white))
+                                      color: darkBlue))
                               : SizedBox(
                                   width: double.infinity,
                                   height: 55,
-                                  child: Container(
-                                    decoration: BoxDecoration(
-                                      gradient: LinearGradient(
-                                        begin: Alignment.topLeft,
-                                        end: Alignment.bottomRight,
-                                        colors: [accentBlue, darkNavy],
-                                        stops: const [0.0, 1.0],
-                                      ),
-                                      borderRadius: BorderRadius.circular(16),
-                                      boxShadow: [
-                                        BoxShadow(
-                                          color: darkNavy.withOpacity(0.5),
-                                          blurRadius: 20,
-                                          offset: const Offset(0, 10),
-                                        ),
-                                        BoxShadow(
-                                          color: accentBlue.withOpacity(0.2),
-                                          blurRadius: 10,
-                                          offset: const Offset(0, 5),
-                                        ),
-                                      ],
-                                    ),
-                                    child: Material(
-                                      color: Colors.transparent,
-                                      child: InkWell(
-                                        onTap: () async {
-                                          if (_nimController.text.isEmpty ||
-                                              _passController.text.isEmpty) {
-                                            ScaffoldMessenger.of(context)
-                                                .showSnackBar(
-                                              const SnackBar(
-                                                content: Text(
-                                                    "Please enter NIM and Password"),
-                                                backgroundColor:
-                                                    Colors.redAccent,
-                                              ),
-                                            );
-                                            return;
-                                          }
+                                  child: ElevatedButton(
+                                    onPressed: () async {
+                                      if (_nimController.text.isEmpty ||
+                                          _passController.text.isEmpty) {
+                                        ScaffoldMessenger.of(context)
+                                            .showSnackBar(
+                                          const SnackBar(
+                                            content: Text(
+                                                "Please enter NIM and Password"),
+                                            backgroundColor: Colors.redAccent,
+                                          ),
+                                        );
+                                        return;
+                                      }
 
-                                          bool success = await auth.login(
-                                            _nimController.text.trim(),
-                                            _passController.text.trim(),
-                                          );
+                                      bool success = await auth.login(
+                                        _nimController.text.trim(),
+                                        _passController.text.trim(),
+                                      );
 
-                                          if (success) {
-                                            Navigator.pushReplacement(
-                                              context,
-                                              MaterialPageRoute(
-                                                builder: (_) => HomeScreen(),
-                                              ),
-                                            );
-                                          } else {
-                                            ScaffoldMessenger.of(context)
-                                                .showSnackBar(
-                                              const SnackBar(
-                                                content: Text(
-                                                    "Login failed. Check your credentials."),
-                                                backgroundColor:
-                                                    Colors.redAccent,
-                                              ),
-                                            );
-                                          }
-                                        },
+                                      if (success) {
+                                        Navigator.pushReplacement(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (_) => HomeScreen(),
+                                          ),
+                                        );
+                                      } else {
+                                        ScaffoldMessenger.of(context)
+                                            .showSnackBar(
+                                          const SnackBar(
+                                            content: Text(
+                                                "Login failed. Check your credentials."),
+                                            backgroundColor: Colors.redAccent,
+                                          ),
+                                        );
+                                      }
+                                    },
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: darkBlue,
+                                      elevation: 5,
+                                      shadowColor: darkBlue.withOpacity(0.4),
+                                      shape: RoundedRectangleBorder(
                                         borderRadius:
                                             BorderRadius.circular(16),
-                                        child: Center(
-                                          child: Text(
-                                            "Sign in",
-                                            style: TextStyle(
-                                              fontSize: 16,
-                                              color: Colors.white,
-                                              fontWeight: FontWeight.bold,
-                                              letterSpacing: 0.5,
-                                            ),
-                                          ),
-                                        ),
+                                      ),
+                                    ),
+                                    child: const Text(
+                                      "Sign in",
+                                      style: TextStyle(
+                                        fontSize: 16,
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.bold,
                                       ),
                                     ),
                                   ),
@@ -256,7 +225,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                   child: Text(
                                     "Register",
                                     style: TextStyle(
-                                      color: darkNavy,
+                                      color: darkBlue,
                                       fontWeight: FontWeight.bold,
                                       fontSize: 14,
                                     ),
@@ -280,7 +249,7 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  // =================== INPUT FIELD CUSTOM (GLASSY EFFECT) ===================
+  // =================== INPUT FIELD CUSTOM ===================
   Widget _buildGlassyInput({
     required TextEditingController controller,
     required String hint,
@@ -291,23 +260,14 @@ class _LoginScreenState extends State<LoginScreen> {
   }) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.92),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-          color: accentBlue.withOpacity(0.4),
-          width: 2,
-        ),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(30),
         boxShadow: [
           BoxShadow(
-            color: accentBlue.withOpacity(0.1),
-            blurRadius: 20,
-            offset: const Offset(0, 8),
-          ),
-          BoxShadow(
-            color: accentBlue.withOpacity(0.08),
-            blurRadius: 12,
-            offset: const Offset(0, 3),
-          ),
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: Offset(0, 5),
+          )
         ],
       ),
       child: TextField(
@@ -317,21 +277,20 @@ class _LoginScreenState extends State<LoginScreen> {
         style: TextStyle(
           color: textDark,
           fontWeight: FontWeight.w600,
-          fontSize: 15,
         ),
         decoration: InputDecoration(
           hintText: hint,
           hintStyle: TextStyle(
-            color: Colors.grey[400],
+            color: Colors.grey[500],
             fontSize: 14,
-            fontWeight: FontWeight.w500,
+            fontWeight: FontWeight.bold,
           ),
           prefixIcon: Padding(
-            padding: const EdgeInsets.only(left: 16, right: 12),
+            padding: const EdgeInsets.only(left: 20, right: 10),
             child: Icon(
               icon,
-              color: accentBlue,
-              size: 24,
+              color: textDark.withOpacity(0.7),
+              size: 22,
             ),
           ),
           suffixIcon: suffixIcon != null

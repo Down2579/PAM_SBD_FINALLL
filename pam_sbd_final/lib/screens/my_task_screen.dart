@@ -3,7 +3,9 @@ import '../api_service.dart';
 import '../models.dart';
 import 'detail_screen.dart';
 import 'add_item_screen.dart';
+import 'notification_screen.dart'; // <--- DIPERBAIKI: Import NotificationScreen
 import 'help_center_screen.dart';
+import '../widgets/notification_modal.dart';
 
 class MyTaskScreen extends StatefulWidget {
   @override
@@ -14,22 +16,22 @@ class _MyTaskScreenState extends State<MyTaskScreen> {
   final ApiService api = ApiService();
 
   // Palet Warna
-  final Color darkBlue = const Color(0xFF2B4263);
-  final Color textDark = const Color(0xFF1F1F1F);
-  final Color bgGrey = const Color(0xFFF5F5F5);
+  final Color darkNavy = const Color(0xFF2B4263);
+  final Color accentBlue = const Color(0xFF4A90E2);
+  final Color textDark = const Color(0xFF1F2937);
+  final Color textSecondary = const Color(0xFF6B7280);
+  final Color bgGrey = const Color(0xFFF5F7FA);
 
   @override
   Widget build(BuildContext context) {
-    // ### MODIFIKASI UTAMA DI SINI ###
-    // Bungkus semua konten dengan widget Material untuk memberikan "dasar" visual
+    // Kode ini menggunakan struktur lama Anda, tanpa BottomNavBar,
+    // karena Anda memintanya berdasarkan kode yang Anda berikan.
     return Material(
-      color: Colors.white, // Atur warna latar belakang di sini
+      color: Colors.white,
       child: Stack(
         children: [
-          // KONTEN UTAMA HALAMAN
           Column(
             children: [
-              // ================= 1. HEADER =================
               Padding(
                 padding: EdgeInsets.only(
                   top: MediaQuery.of(context).padding.top + 20,
@@ -42,14 +44,19 @@ class _MyTaskScreenState extends State<MyTaskScreen> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Icon(Icons.menu, size: 28, color: textDark),
                         IconButton(
-                          icon: Icon(Icons.notifications_none_outlined, size: 28, color: textDark),
+                          icon: Icon(Icons.menu, size: 28, color: textDark),
                           onPressed: () {
                             Navigator.push(
                               context,
                               MaterialPageRoute(builder: (context) => HelpCenterScreen()),
                             );
+                          },
+                        ),
+                        IconButton(
+                          icon: Icon(Icons.notifications_none_outlined, size: 28, color: textDark),
+                          onPressed: () async {
+                            await showNotificationsModal(context);
                           },
                         ),
                       ],
@@ -63,7 +70,7 @@ class _MyTaskScreenState extends State<MyTaskScreen> {
                           child: Image.asset(
                             'assets/images/logo.png',
                             errorBuilder: (context, error, stackTrace) {
-                              return Icon(Icons.inventory_2_outlined, size: 48, color: darkBlue);
+                              return Icon(Icons.inventory_2_outlined, size: 48, color: darkNavy);
                             },
                           ),
                         ),
@@ -72,7 +79,7 @@ class _MyTaskScreenState extends State<MyTaskScreen> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text("My Task", style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold, color: textDark)),
-                            Text("Found yours !", style: TextStyle(fontSize: 14, color: darkBlue, fontWeight: FontWeight.w600)),
+                            Text("Found yours !", style: TextStyle(fontSize: 14, color: darkNavy, fontWeight: FontWeight.w600)),
                           ],
                         )
                       ],
@@ -80,22 +87,18 @@ class _MyTaskScreenState extends State<MyTaskScreen> {
                   ],
                 ),
               ),
-
-              // ================= 2. CONTENT LIST =================
               Expanded(
                 child: FutureBuilder<List<Item>>(
                   future: api.getMyItems(), 
                   builder: (context, snapshot) {
                     if (snapshot.connectionState == ConnectionState.waiting) {
-                      return Center(child: CircularProgressIndicator(color: darkBlue));
+                      return Center(child: CircularProgressIndicator(color: darkNavy));
                     }
-                    
                     if (!snapshot.hasData || snapshot.data!.isEmpty) {
                       return Center(
                         child: Text("You don’t have any task", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: textDark)),
                       );
                     }
-
                     List<Item> items = snapshot.data!;
                     return ListView.builder(
                       padding: EdgeInsets.symmetric(horizontal: 24, vertical: 10),
@@ -109,8 +112,6 @@ class _MyTaskScreenState extends State<MyTaskScreen> {
               ),
             ],
           ),
-
-          // ================= FAB (TOMBOL TAMBAH) =================
           Positioned(
             bottom: 20,
             right: 20,
@@ -122,7 +123,7 @@ class _MyTaskScreenState extends State<MyTaskScreen> {
                 );
                 setState(() {}); 
               },
-              backgroundColor: darkBlue,
+              backgroundColor: darkNavy,
               elevation: 5,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(16), 
@@ -135,10 +136,9 @@ class _MyTaskScreenState extends State<MyTaskScreen> {
     );
   }
 
-  // ================= WIDGET ITEM (DESIGN KARTU) - Tidak Berubah =================
   Widget _buildTaskItem(Item item) {
-    bool isLost = item.tipeLaporan?.toLowerCase() == "hilang";
-    String displayDate = item.waktu ?? "11/21/2025"; 
+    bool isLost = item.tipeLaporan.toLowerCase() == "hilang";
+    String displayDate = item.waktu;
 
     return GestureDetector(
       onTap: () {
@@ -166,7 +166,7 @@ class _MyTaskScreenState extends State<MyTaskScreen> {
             Container(
               width: 90,
               decoration: BoxDecoration(
-                color: darkBlue,
+                color: darkNavy,
                 borderRadius: BorderRadius.circular(20),
               ),
               child: Center(

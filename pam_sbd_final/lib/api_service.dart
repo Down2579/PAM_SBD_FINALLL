@@ -28,8 +28,8 @@ class ApiService {
   // AUTHENTICATION
   // ===============================================================
 
-  // LOGIN
-  Future<User> login(String email, String password) async {
+  // LOGIN (menggunakan NIM sebagai identifier)
+  Future<User> login(String nim, String password) async {
     final url = Uri.parse('$baseUrl/login');
     print("POST Login: $url"); // Debug
 
@@ -39,7 +39,7 @@ class ApiService {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
       },
-      body: jsonEncode({'email': email, 'password': password}),
+      body: jsonEncode({'nim': nim, 'password': password}),
     );
 
     print("Login Status: ${response.statusCode}"); // Debug

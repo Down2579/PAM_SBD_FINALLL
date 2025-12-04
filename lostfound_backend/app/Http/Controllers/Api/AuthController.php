@@ -21,7 +21,15 @@ class AuthController extends Controller
     public function login(LoginRequest $req)
     {
         $creds = $req->validated();
-        $user = User::where('email',$creds['email'])->first();
+
+        // Coba cari berdasarkan email jika tersedia, jika tidak gunakan NIM
+        $user = null;
+        if(isset($creds['email']) && !empty($creds['email'])){
+            $user = User::where('email', $creds['email'])->first();
+        } elseif(isset($creds['nim']) && !empty($creds['nim'])){
+            $user = User::where('nim', $creds['nim'])->first();
+        }
+
         if(!$user || !Hash::check($creds['password'],$user->password)){
             return response()->json(['message'=>'Credentials invalid'],401);
         }

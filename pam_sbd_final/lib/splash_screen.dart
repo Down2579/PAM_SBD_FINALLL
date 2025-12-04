@@ -43,7 +43,8 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   Widget build(BuildContext context) {
     // Palet Warna (konsisten dengan aplikasi Anda)
-    final Color darkBlue = const Color(0xFF2B4263);
+    final Color darkNavy = const Color(0xFF2B4263);
+    final Color accentBlue = const Color(0xFF4A90E2);
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -87,7 +88,7 @@ class _SplashScreenState extends State<SplashScreen> {
                   style: TextStyle(
                     fontSize: 24,
                     fontWeight: FontWeight.bold,
-                    color: darkBlue, // Menggunakan warna yang konsisten
+                    color: darkNavy, // Menggunakan warna yang konsisten
                     letterSpacing: 1.5,
                   ),
                 ),

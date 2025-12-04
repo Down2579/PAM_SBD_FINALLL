@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'help_center_screen.dart'; // <--- DITAMBAHKAN: Import halaman Help Center
+import 'notification_screen.dart'; // <--- DITAMBAHKAN: Import halaman Notification
 
 class ProfileDetailScreen extends StatefulWidget {
   @override
@@ -9,9 +9,10 @@ class ProfileDetailScreen extends StatefulWidget {
 
 class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
   // ================= COLORS PALETTE =================
-  final Color darkBlue = const Color(0xFF2B4263); // Warna teks biru
-  final Color textDark = const Color(0xFF1F1F1F);
-  final Color bgGrey = const Color(0xFFF5F5F5);   // Warna background kolom
+  final Color darkNavy = const Color(0xFF2B4263); // Warna teks navy
+  final Color accentBlue = const Color(0xFF4A90E2);
+  final Color textDark = const Color(0xFF1F2937);
+  final Color bgGrey = const Color(0xFFF5F7FA);   // Warna background kolom
 
   // Variable Data
   String _fullName = "...";
@@ -61,7 +62,7 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
                     onPressed: () {
                        Navigator.push(
                         context,
-                        MaterialPageRoute(builder: (context) => HelpCenterScreen()),
+                        MaterialPageRoute(builder: (context) => NotificationScreen()),
                       );
                     },
                   ),
@@ -94,7 +95,7 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
                 style: TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
-                  color: darkBlue, 
+                  color: darkNavy, 
                 ),
               ),
 
@@ -130,7 +131,7 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
             child: Text(
               label,
               style: TextStyle(
-                color: darkBlue,
+                color: darkNavy,
                 fontWeight: FontWeight.bold,
                 fontSize: 14,
               ),
