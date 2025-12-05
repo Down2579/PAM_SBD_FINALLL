@@ -9,13 +9,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 
 import '../api_service.dart';
-import 'notification_screen.dart';
+import 'home_screen.dart'; // Penting untuk navigasi kembali
 import 'help_center_screen.dart';
-import '../widgets/notification_modal.dart';
-import 'home_screen.dart';
-import 'my_task_screen.dart';
-import 'completed_screen.dart';
-import 'profile_screen.dart';
 
 class AddItemScreen extends StatefulWidget {
   const AddItemScreen({Key? key}) : super(key: key);
@@ -27,15 +22,15 @@ class AddItemScreen extends StatefulWidget {
 class _AddItemScreenState extends State<AddItemScreen> {
   // --- Controllers & State Variables ---
   final _nameController = TextEditingController();
-  final _dateController = TextEditingController();
   final _descController = TextEditingController();
+  DateTime? _selectedDate;
 
   int? _selectedCategoryId;
-  int? _selectedLocationId; // Ditambahkan kembali
-  String? _selectedReportType; // Ditambahkan kembali
+  int? _selectedLocationId;
+  String? _selectedReportType;
 
   List<Map<String, dynamic>> _categories = [];
-  List<Map<String, dynamic>> _locations = []; // Ditambahkan kembali
+  List<Map<String, dynamic>> _locations = [];
 
   File? _selectedImage;
   final ImagePicker _picker = ImagePicker();
@@ -43,40 +38,33 @@ class _AddItemScreenState extends State<AddItemScreen> {
   bool _loading = false;
   bool _loadingData = true;
 
-  // --- Palet Warna ---
+  // --- Palet Warna Sesuai Desain ---
   final Color darkNavy = const Color(0xFF2B4263);
   final Color accentBlue = const Color(0xFF4A90E2);
   final Color textDark = const Color(0xFF1F2937);
-  final Color textSecondary = const Color(0xFF6B7280);
-  final Color bgGrey = const Color(0xFFF5F7FA);
-  final Color bgBlueLight = const Color(0xFFE3F2FD);
+  final Color bgForm = Colors.white;
+  final Color bgInput = const Color(0xFFF5F7FA);
+  final Color bgTop = const Color(0xFFF5F7FA);
+  final Color bgBottom = Colors.white;
 
   @override
   void initState() {
     super.initState();
-    _dateController.text = DateFormat('MM/dd/yyyy').format(DateTime.now());
     _loadInitialData();
-  }
-  
-  // --- LOGIKA DATA (Fungsi tidak diubah, hanya ditambahkan _loadLocations) ---
-
-  Future<void> _loadInitialData() async {
-    // Memuat kategori dan lokasi secara bersamaan
-    await Future.wait([
-      _loadCategories(),
-      _loadLocations(),
-    ]);
-    if (mounted) {
-      setState(() => _loadingData = false);
-    }
   }
 
   @override
   void dispose() {
     _nameController.dispose();
-    _dateController.dispose();
     _descController.dispose();
     super.dispose();
+  }
+
+  // --- FUNGSI-FUNGSI LOGIKA ---
+
+  Future<void> _loadInitialData() async {
+    await Future.wait([_loadCategories(), _loadLocations()]);
+    if (mounted) setState(() => _loadingData = false);
   }
 
   Future<void> _pickImage(ImageSource source) async {
@@ -84,9 +72,7 @@ class _AddItemScreenState extends State<AddItemScreen> {
     try {
       final XFile? picked = await _picker.pickImage(source: source, imageQuality: 80);
       if (picked != null) {
-        setState(() {
-          _selectedImage = File(picked.path);
-        });
+        setState(() => _selectedImage = File(picked.path));
       }
     } catch (e) {
       debugPrint("Error picking image: $e");
@@ -94,7 +80,7 @@ class _AddItemScreenState extends State<AddItemScreen> {
   }
 
   void _showImageSourceOptions() {
-     showModalBottomSheet(
+    showModalBottomSheet(
       context: context,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
       builder: (context) => SizedBox(
@@ -139,15 +125,11 @@ class _AddItemScreenState extends State<AddItemScreen> {
   Future<void> _pickDate() async {
     DateTime? picked = await showDatePicker(
       context: context,
-      initialDate: DateTime.now(),
+      initialDate: _selectedDate ?? DateTime.now(),
       firstDate: DateTime(2000),
-      lastDate: DateTime(2100),
+      lastDate: DateTime.now(),
     );
-    if (picked != null) {
-      setState(() {
-        _dateController.text = DateFormat('MM/dd/yyyy').format(picked);
-      });
-    }
+    if (picked != null) setState(() => _selectedDate = picked);
   }
 
   Future<Map<String, String>> _getAuthHeaders() async {
@@ -195,71 +177,133 @@ class _AddItemScreenState extends State<AddItemScreen> {
   }
 
   Future<void> _submitForm() async {
-    if (_nameController.text.trim().isEmpty || 
-        _selectedCategoryId == null || 
-        _selectedLocationId == null || 
-        _selectedReportType == null || 
-        _descController.text.trim().isEmpty || 
-        _selectedImage == null) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Harap isi semua field yang wajib")));
+    // 1. Validasi semua field wajib
+    if (_nameController.text.trim().isEmpty) {
+      _showSnackBar("Nama barang tidak boleh kosong!", isError: true);
       return;
     }
+    if (_selectedCategoryId == null) {
+      _showSnackBar("Pilih kategori!", isError: true);
+      return;
+    }
+    if (_selectedLocationId == null) {
+      _showSnackBar("Pilih lokasi!", isError: true);
+      return;
+    }
+    if (_selectedReportType == null) {
+      _showSnackBar("Pilih tipe laporan!", isError: true);
+      return;
+    }
+    if (_selectedDate == null) {
+      _showSnackBar("Pilih tanggal kejadian!", isError: true);
+      return;
+    }
+    if (_descController.text.trim().isEmpty) {
+      _showSnackBar("Deskripsi tidak boleh kosong!", isError: true);
+      return;
+    }
+
     setState(() => _loading = true);
+
     try {
-      String tanggal = DateFormat('yyyy-MM-dd').format(DateFormat('MM/dd/yyyy').parse(_dateController.text));
-      
-      final data = <String, String>{
+      // 2. Siapkan data untuk dikirim
+      final Map<String, String> formData = {
         'nama_barang': _nameController.text.trim(),
-        'deskripsi': _descController.text.trim(),
-        'tipe_laporan': _selectedReportType!,
-        'tanggal_kejadian': tanggal,
         'id_kategori': _selectedCategoryId.toString(),
         'id_lokasi': _selectedLocationId.toString(),
+        'tipe_laporan': _selectedReportType!,
+        'waktu': _selectedDate.toString().split(' ')[0], // Format: YYYY-MM-DD
+        'deskripsi': _descController.text.trim(),
       };
-      
-      final api = ApiService();
-      final success = await api.createItem(data: data, imageFile: _selectedImage);
 
-      if (success && mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Barang berhasil ditambahkan")));
-        Navigator.of(context).pop(true);
-      } else if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Gagal menambahkan barang")));
+      // 3. Submit ke backend dengan image
+      final ApiService api = ApiService();
+      bool success = await api.createItem(
+        data: formData,
+        imageFile: _selectedImage,
+      );
+
+      if (success) {
+        _showSnackBar("Laporan berhasil dibuat!", isError: false);
+        
+        // Tunggu 2 detik sebelum navigate kembali
+        await Future.delayed(const Duration(seconds: 1));
+        
+        if (mounted) {
+          // Navigate kembali ke HomeScreen di tab My Task
+          Navigator.pushAndRemoveUntil(
+            context,
+            MaterialPageRoute(
+              builder: (context) => const HomeScreen(initialIndex: 1),
+            ),
+            (route) => false,
+          );
+        }
+      } else {
+        _showSnackBar("Gagal membuat laporan. Coba lagi!", isError: true);
       }
     } catch (e) {
-      debugPrint("Submit error: $e");
+      print("Error submit form: $e");
+      _showSnackBar("Error: ${e.toString()}", isError: true);
     } finally {
-      if (mounted) setState(() => _loading = false);
+      if (mounted) {
+        setState(() => _loading = false);
+      }
     }
   }
 
-  // ================= UI BARU YANG LENGKAP =================
+  void _showSnackBar(String message, {required bool isError}) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: isError ? Colors.red : Colors.green,
+        duration: const Duration(seconds: 3),
+      ),
+    );
+  }
+  
+  // ================= UI BUILD METHOD =================
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: bgBlueLight,
-      body: SafeArea(
-        child: Column(
-          children: [
-            _buildHeader(),
-            Expanded(
-              child: _loadingData
-                  ? Center(child: CircularProgressIndicator(color: darkNavy))
-                  : SingleChildScrollView(
-                      padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 10.0),
-                      child: _buildFormCard(),
-                    ),
-            ),
-          ],
+      backgroundColor: bgTop,
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        leading: IconButton(
+          icon: Icon(Icons.menu, color: textDark, size: 28),
+          onPressed: () => Navigator.of(context).pop(),
         ),
+        actions: [
+          IconButton(
+            icon: Icon(Icons.notifications_none_outlined, color: textDark, size: 28),
+            onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => HelpCenterScreen())),
+          ),
+        ],
       ),
+      body: _loadingData
+          ? Center(child: CircularProgressIndicator(color: darkNavy))
+          : SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(horizontal: 24.0),
+              child: Column(
+                children: [
+                  _buildHeader(),
+                  const SizedBox(height: 20),
+                  _buildFormCard(),
+                  const SizedBox(height: 30),
+                  _buildSubmitButton(),
+                  const SizedBox(height: 20),
+                ],
+              ),
+            ),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: 1,
         onTap: (index) {
-          if (index == 0) Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => HomeScreen()));
-          else if (index == 1) Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => MyTaskScreen()));
-          else if (index == 2) Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => CompletedScreen()));
-          else if (index == 3) Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => ProfileScreen()));
+          Navigator.pushAndRemoveUntil(
+            context,
+            MaterialPageRoute(builder: (context) => HomeScreen(initialIndex: index)),
+            (route) => false,
+          );
         },
         type: BottomNavigationBarType.fixed,
         backgroundColor: Colors.white,
@@ -277,148 +321,108 @@ class _AddItemScreenState extends State<AddItemScreen> {
     );
   }
 
+  // --- WIDGET-WIDGET BUILDER ---
+
   Widget _buildHeader() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 20),
-      child: Column(
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              IconButton(
-                icon: Icon(Icons.menu, size: 28, color: textDark),
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => HelpCenterScreen()),
-                  );
-                },
-              ),
-              IconButton(
-                icon: Icon(Icons.notifications_none_outlined, size: 28, color: textDark),
-                onPressed: () async {
-                  await showNotificationsModal(context);
-                },
-              ),
-            ],
-          ),
-          const SizedBox(height: 20),
-          Row(
-            children: [
-              Container(
-                height: 60, width: 60, padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), boxShadow: [BoxShadow(color: Colors.grey.withOpacity(0.2), blurRadius: 10, offset: const Offset(0, 4))]),
-                child: Image.asset('assets/images/logo.png', errorBuilder: (ctx, err, st) => Icon(Icons.error)),
-              ),
-              const SizedBox(width: 16),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text("My Task", style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold, color: textDark)),
-                  Text("Found yours !", style: TextStyle(fontSize: 14, color: darkNavy, fontWeight: FontWeight.w600)),
-                ],
-              )
-            ],
-          ),
-        ],
-      ),
+    return Row(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16)),
+          child: Icon(Icons.inventory_2_outlined, color: darkNavy, size: 32),
+        ),
+        const SizedBox(width: 16),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text("My Task", style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold, color: textDark)),
+            Text("Found yours !", style: TextStyle(fontSize: 14, color: darkNavy, fontWeight: FontWeight.w600)),
+          ],
+        )
+      ],
     );
   }
   
   Widget _buildFormCard() {
     return Container(
       padding: const EdgeInsets.all(20.0),
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20), boxShadow: [BoxShadow(color: Colors.grey.withOpacity(0.15), blurRadius: 15, offset: const Offset(0, 5))]),
+      decoration: BoxDecoration(
+        color: bgForm,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [BoxShadow(color: Colors.grey.withOpacity(0.1), blurRadius: 15, offset: const Offset(0, 5))]
+      ),
       child: Column(
         children: [
-          _buildFormRow("Nama Barang", _buildTextField(_nameController, "Contoh: Dompet hitam")),
-          const SizedBox(height: 16),
-          _buildFormRow("Kategori", _buildCategoryDropdown()),
-          const SizedBox(height: 16),
-          _buildFormRow("Lokasi", _buildLocationDropdown()), // DITAMBAHKAN
-          const SizedBox(height: 16),
-          _buildFormRow("Tipe Laporan", _buildReportTypeDropdown()), // DITAMBAHKAN
-          const SizedBox(height: 16),
+          _buildFormRow("Nama Barang", _buildTextField("Contoh: Dompet ...", _nameController)),
+          _buildFormRow("Kategori", _buildDropdown(_selectedCategoryId, _categories, "Pilih kategori", (val) => setState(() => _selectedCategoryId = val))),
+          _buildFormRow("Lokasi", _buildDropdown(_selectedLocationId, _locations, "Pilih lokasi", (val) => setState(() => _selectedLocationId = val))),
+          _buildFormRow("Tipe Laporan", _buildReportTypeDropdown()),
           _buildFormRow("Tanggal Kejadian", _buildDateField()),
-          const SizedBox(height: 16),
-          _buildFormRow("Deskripsi", _buildMultilineField(_descController), alignStart: true),
-          const SizedBox(height: 16),
+          _buildFormRow("Deskripsi", _buildTextArea("Deskripsikan lokasi/warna/ciri-ciri", _descController), alignStart: true),
           _buildFormRow("Gambar Utama", _buildImagePicker(), alignStart: true),
-          const SizedBox(height: 24),
-          _buildActionButtons(),
         ],
       ),
     );
   }
 
   Widget _buildFormRow(String label, Widget child, {bool alignStart = false}) {
-    return Row(
-      crossAxisAlignment: alignStart ? CrossAxisAlignment.start : CrossAxisAlignment.center,
-      children: [
-        SizedBox(
-          width: 110, // Lebar label disesuaikan
-          child: Text(
-            label,
-            style: TextStyle(fontWeight: FontWeight.bold, color: textDark),
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16.0),
+      child: Row(
+        crossAxisAlignment: alignStart ? CrossAxisAlignment.start : CrossAxisAlignment.center,
+        children: [
+          SizedBox(
+            width: 100,
+            child: Text(label, style: TextStyle(fontWeight: FontWeight.w600, color: textDark)),
           ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(child: child),
-      ],
-    );
-  }
-
-  Widget _buildTextField(TextEditingController c, String hint) {
-    return SizedBox(
-      height: 45,
-      child: TextField(
-        controller: c,
-        decoration: InputDecoration(
-          hintText: hint,
-          hintStyle: TextStyle(color: Colors.grey[400]),
-          filled: true,
-          fillColor: bgBlueLight,
-          contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-        ),
+          const SizedBox(width: 10),
+          Expanded(child: child),
+        ],
       ),
     );
   }
 
-  // WIDGET BARU
-  Widget _buildLocationDropdown() {
+  Widget _buildTextField(String hint, TextEditingController controller) {
+    return TextFormField(
+      controller: controller,
+      decoration: InputDecoration(
+        hintText: hint,
+        filled: true,
+        fillColor: bgInput,
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      ),
+      validator: (val) => val!.isEmpty ? 'Tidak boleh kosong' : null,
+    );
+  }
+
+  Widget _buildDropdown(int? value, List<Map<String, dynamic>> items, String hint, Function(int?) onChanged) {
     return Container(
-      height: 45,
+      height: 48,
       padding: const EdgeInsets.symmetric(horizontal: 16),
-      decoration: BoxDecoration(color: bgBlueLight, borderRadius: BorderRadius.circular(12)),
+      decoration: BoxDecoration(color: bgInput, borderRadius: BorderRadius.circular(12)),
       child: DropdownButtonHideUnderline(
         child: DropdownButton<int>(
-          value: _selectedLocationId,
+          value: value,
           isExpanded: true,
-          hint: const Text("Pilih lokasi"),
-          items: _locations.map((loc) {
-            return DropdownMenuItem<int>(
-              value: loc['id'],
-              child: Text(loc['nama']),
-            );
-          }).toList(),
-          onChanged: (val) => setState(() => _selectedLocationId = val),
+          hint: Text(hint, style: TextStyle(color: Colors.grey[600])),
+          items: items.map((item) => DropdownMenuItem<int>(value: item['id'], child: Text(item['nama']))).toList(),
+          onChanged: onChanged,
         ),
       ),
     );
   }
 
-  // WIDGET BARU
   Widget _buildReportTypeDropdown() {
     return Container(
-      height: 45,
+      height: 48,
       padding: const EdgeInsets.symmetric(horizontal: 16),
-      decoration: BoxDecoration(color: bgBlueLight, borderRadius: BorderRadius.circular(12)),
+      decoration: BoxDecoration(color: bgInput, borderRadius: BorderRadius.circular(12)),
       child: DropdownButtonHideUnderline(
         child: DropdownButton<String>(
           value: _selectedReportType,
           isExpanded: true,
-          hint: const Text("Pilih tipe"),
+          hint: Text("Pilih tipe", style: TextStyle(color: Colors.grey[600])),
           items: const [
             DropdownMenuItem(value: "hilang", child: Text("Barang Hilang")),
             DropdownMenuItem(value: "ditemukan", child: Text("Barang Ditemukan")),
@@ -429,114 +433,74 @@ class _AddItemScreenState extends State<AddItemScreen> {
     );
   }
 
-  Widget _buildCategoryDropdown() {
-    return Container(
-      height: 45,
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      decoration: BoxDecoration(color: bgBlueLight, borderRadius: BorderRadius.circular(12)),
-      child: DropdownButtonHideUnderline(
-        child: DropdownButton<int>(
-          value: _selectedCategoryId,
-          isExpanded: true,
-          hint: const Text("Pilih kategori"),
-          items: _categories.map((c) {
-            return DropdownMenuItem<int>(
-              value: c['id'],
-              child: Text(c['nama']),
-            );
-          }).toList(),
-          onChanged: (val) => setState(() => _selectedCategoryId = val),
-        ),
-      ),
-    );
-  }
-
   Widget _buildDateField() {
-    return GestureDetector(
-      onTap: _pickDate,
-      child: AbsorbPointer(
-        child: SizedBox(
-          height: 45,
-          child: TextField(
-            controller: _dateController,
-            decoration: InputDecoration(
-              filled: true,
-              fillColor: bgBlueLight,
-              contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-              suffixIcon: Icon(Icons.calendar_today, color: darkNavy),
+    return InkWell(
+      onTap: () => _pickDate(),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 14.0),
+        decoration: BoxDecoration(color: bgInput, borderRadius: BorderRadius.circular(12)),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              _selectedDate == null ? '12/04/2025' : DateFormat('dd/MM/yyyy').format(_selectedDate!),
+              style: TextStyle(color: textDark, fontSize: 14),
             ),
-          ),
+            Icon(Icons.calendar_today_outlined, color: textDark, size: 20),
+          ],
         ),
       ),
     );
   }
 
-  Widget _buildMultilineField(TextEditingController c) {
-    return TextField(
-      controller: c,
+  Widget _buildTextArea(String hint, TextEditingController controller) {
+    return TextFormField(
+      controller: controller,
       maxLines: 4,
       decoration: InputDecoration(
-        hintText: "Deskripsikan lokasi/warna/ciri-ciri",
-        hintStyle: TextStyle(color: Colors.grey[400]),
+        hintText: hint,
         filled: true,
-        fillColor: bgBlueLight,
-        contentPadding: const EdgeInsets.all(16),
+        fillColor: bgInput,
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+        contentPadding: const EdgeInsets.all(16),
       ),
+      validator: (val) => val!.isEmpty ? 'Tidak boleh kosong' : null,
     );
   }
 
   Widget _buildImagePicker() {
-    return GestureDetector(
+    return InkWell(
       onTap: _showImageSourceOptions,
       child: Container(
         height: 100,
-        width: double.infinity,
-        decoration: BoxDecoration(color: bgBlueLight, borderRadius: BorderRadius.circular(12)),
+        decoration: BoxDecoration(color: bgInput, borderRadius: BorderRadius.circular(12)),
         child: _selectedImage == null
-            ? Center(child: Icon(Icons.add_a_photo_outlined, size: 40, color: Colors.grey[600]))
+            ? Center(child: Icon(Icons.add_a_photo_outlined, color: Colors.grey[600], size: 40))
             : ClipRRect(borderRadius: BorderRadius.circular(12), child: Image.file(_selectedImage!, fit: BoxFit.cover)),
       ),
     );
   }
-
-   Widget _buildActionButtons() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.end,
-      children: [
-        ElevatedButton(
-          onPressed: () {
-            _nameController.clear();
-            _descController.clear();
-            setState(() {
-              _selectedCategoryId = null;
-              _selectedLocationId = null;
-              _selectedReportType = null;
-              _selectedImage = null;
-              _dateController.text = DateFormat('MM/dd/yyyy').format(DateTime.now());
-            });
-          },
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.grey[600],
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 12),
-          ),
-          child: Text("Undo", style: TextStyle(color: Colors.white)),
+  
+  Widget _buildSubmitButton() {
+    return SizedBox(
+      width: double.infinity,
+      child: ElevatedButton.icon(
+        onPressed: _loading ? null : _submitForm,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: darkNavy,
+          disabledBackgroundColor: Colors.grey,
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          elevation: 4,
         ),
-        const SizedBox(width: 10),
-        ElevatedButton(
-          onPressed: _loading ? null : _submitForm,
-          style: ElevatedButton.styleFrom(
-            backgroundColor: darkNavy,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 12),
-          ),
-          child: _loading 
-            ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)) 
-            : Text("Post", style: TextStyle(color: Colors.white)),
+        icon: _loading 
+          ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+          : const Icon(Icons.check_circle, color: Colors.white, size: 20),
+        label: Text(
+          _loading ? "Submitting..." : "Submit Laporan",
+          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
         ),
-      ],
+      ),
     );
   }
 }

@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'providers.dart';
-// import 'screens/login_screen.dart'; // Tidak perlu di-import di sini lagi
-// import 'screens/home_screen.dart';  // Tidak perlu di-import di sini lagi
-import 'splash_screen.dart'; // WAJIB: Import file splash screen yang baru dibuat
+import 'providers.dart'; // File ini kemungkinan berisi AuthProvider
+import 'notification_provider.dart'; // DITAMBAHKAN: Import NotificationProvider
+import 'splash_screen.dart';
 
 void main() {
   runApp(MyApp());
@@ -14,9 +13,14 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
-        // checkSession() tetap berjalan di background agar datanya siap
-        // saat timer Splash Screen selesai.
+        // 1. AuthProvider untuk manajemen login & sesi
         ChangeNotifierProvider(create: (_) => AuthProvider()..checkSession()),
+
+        // ### MODIFIKASI UTAMA DI SINI ###
+        // 2. NotificationProvider untuk manajemen state notifikasi
+        ChangeNotifierProvider(create: (_) => NotificationProvider()),
+        
+        // Anda bisa menambahkan provider lain di sini jika dibutuhkan di masa depan
       ],
       child: MaterialApp(
         title: 'LostFound',
@@ -24,10 +28,9 @@ class MyApp extends StatelessWidget {
         theme: ThemeData(
           primarySwatch: Colors.blue,
           useMaterial3: true,
+          // Menambahkan ScaffolodBackgroundColor agar konsisten
+          scaffoldBackgroundColor: Colors.white, 
         ),
-        // PERUBAHAN UTAMA DI SINI:
-        // Kita tidak lagi menggunakan Consumer langsung di sini.
-        // Kita panggil SplashScreen() sebagai halaman pertama.
         home: const SplashScreen(),
       ),
     );

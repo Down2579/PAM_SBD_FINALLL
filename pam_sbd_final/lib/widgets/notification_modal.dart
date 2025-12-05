@@ -1,13 +1,10 @@
 import 'package:flutter/material.dart';
+import '../notification_provider.dart';
+import 'package:provider/provider.dart';
 
 Future<void> showNotificationsModal(BuildContext context, {List<String>? notifications}) {
-  final List<String> items = notifications ?? [
-    "Your account is create !",
-    "New lost item, check it now!",
-    "Your new post has been created",
-  ];
-
-  final Color darkNavy = const Color(0xFF2B4263);
+  final provider = Provider.of<NotificationProvider>(context, listen: false);
+  final items = notifications ?? provider.notifications;
 
   return showModalBottomSheet(
     context: context,
@@ -17,60 +14,64 @@ Future<void> showNotificationsModal(BuildContext context, {List<String>? notific
       borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
     ),
     builder: (ctx) {
-      return Padding(
-        padding: EdgeInsets.only(
-          bottom: MediaQuery.of(ctx).viewInsets.bottom,
-        ),
-        child: SizedBox(
-          height: MediaQuery.of(ctx).size.height * 0.6,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(20, 18, 20, 8),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text('Notifications', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: darkNavy)),
-                    IconButton(
-                      icon: Icon(Icons.close, color: Colors.grey[700]),
-                      onPressed: () => Navigator.of(ctx).pop(),
-                    )
-                  ],
+      return Consumer<NotificationProvider>(
+        builder: (context, notifProvider, _) {
+          return Padding(
+            padding: EdgeInsets.only(
+              bottom: MediaQuery.of(ctx).viewInsets.bottom,
+              left: 16,
+              right: 16,
+              top: 16,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.grey[300],
+                    borderRadius: BorderRadius.circular(2),
+                  ),
                 ),
-              ),
-              const Divider(height: 1),
-              Expanded(
-                child: ListView.separated(
-                  padding: const EdgeInsets.all(16),
-                  itemCount: items.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: 12),
-                  itemBuilder: (c, i) {
-                    return Container(
-                      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 14),
-                      decoration: BoxDecoration(
-                        color: Colors.grey.shade100,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
-                          Icon(Icons.notifications_none_outlined, color: darkNavy),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Text(items[i], style: const TextStyle(fontWeight: FontWeight.w600)),
+                const SizedBox(height: 12),
+                const Text('Notifications', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                const SizedBox(height: 12),
+                if (notifProvider.isLoading)
+                  const Center(child: CircularProgressIndicator())
+                else if (items.isEmpty)
+                  const Padding(
+                    padding: EdgeInsets.all(20.0),
+                    child: Text('No notifications yet', style: TextStyle(color: Colors.grey)),
+                  )
+                else
+                  Flexible(
+                    child: ListView.separated(
+                      shrinkWrap: true,
+                      itemCount: items.length,
+                      separatorBuilder: (_, __) => const SizedBox(height: 8),
+                      itemBuilder: (context, index) {
+                        final t = items[index];
+                        return Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Colors.grey[100],
+                            borderRadius: BorderRadius.circular(12),
                           ),
-                          Text('Now', style: TextStyle(color: Colors.grey[600], fontSize: 12)),
-                        ],
-                      ),
-                    );
-                  },
-                ),
-              ),
-            ],
-          ),
-        ),
+                          child: Text(t),
+                        );
+                      },
+                    ),
+                  ),
+                const SizedBox(height: 12),
+              ],
+            ),
+          );
+        },
       );
     },
-  );
+  ).whenComplete(() {
+    // When the modal closes, reset unread count
+    provider.reset();
+  });
 }

@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'login_screen.dart';
 import 'notification_screen.dart';
-import 'profile_detail_screen.dart'; // Pastikan file ini ada
+import 'profile_detail_screen.dart';
+import 'edit_profile_screen.dart';
 import 'help_center_screen.dart';
 import '../widgets/notification_modal.dart';
 import 'home_screen.dart';
@@ -20,6 +21,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
   final Color accentBlue = const Color(0xFF4A90E2);
   final Color textDark = const Color(0xFF1F2937);
   final Color bgGrey = const Color(0xFFF5F7FA);
+  final Color textSecondary = const Color(0xFF6B7280);
+  final Color errorRed = const Color(0xFFEF4444);
 
   String _fullName = "Loading...";
 
@@ -70,7 +73,26 @@ class _ProfileScreenState extends State<ProfileScreen> {
             child: Column(
               children: [
                 const SizedBox(height: 20),
-                Icon(Icons.person_outline_rounded, size: 100, color: textDark),
+                Container(
+                  width: 100,
+                  height: 100,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [darkNavy, darkNavy.withOpacity(0.7)],
+                    ),
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: [
+                      BoxShadow(
+                        color: darkNavy.withOpacity(0.2),
+                        blurRadius: 15,
+                        offset: const Offset(0, 5),
+                      )
+                    ],
+                  ),
+                  child: Icon(Icons.person_outline_rounded, size: 50, color: Colors.white),
+                ),
                 const SizedBox(height: 16),
                 Text(
                   _fullName,
@@ -81,6 +103,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     color: textDark,
                   ),
                 ),
+                const SizedBox(height: 8),
+                Text(
+                  "Manage your account",
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: const Color(0xFF6B7280),
+                  ),
+                ),
                 const SizedBox(height: 40),
 
                 // Menu Items
@@ -88,11 +118,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   icon: Icons.person_outline,
                   title: "Profile",
                   onTap: () async {
-                    await Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                            builder: (context) => ProfileDetailScreen()));
-                    _loadUserData(); // Muat ulang data jika ada perubahan
+                    final result = await Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => const EditProfileScreen()),
+                    );
+                    if (result == true) {
+                      _loadUserData(); // Reload jika ada perubahan
+                    }
                   },
                 ),
                 // Menurut desain Figma, menu "My Task" tidak ada di sini
@@ -116,32 +148,47 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 const SizedBox(height: 50),
 
                 // Tombol Sign Out
-                SizedBox(
-                  width: 200,
-                  height: 50,
-                  child: ElevatedButton(
-                    onPressed: () => _showLogoutDialog(context),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: darkNavy,
-                      elevation: 0,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(30),
-                      ),
-                    ),
-                    child: const Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.logout, color: Colors.white, size: 20),
-                        SizedBox(width: 10),
-                        Text(
-                          "Sign Out",
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                          ),
-                        ),
+                Container(
+                  width: double.infinity,
+                  height: 56,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [
+                        errorRed,
+                        errorRed.withOpacity(0.8),
                       ],
+                    ),
+                    borderRadius: BorderRadius.circular(14),
+                    boxShadow: [
+                      BoxShadow(
+                        color: errorRed.withOpacity(0.3),
+                        blurRadius: 12,
+                        offset: const Offset(0, 4),
+                      )
+                    ],
+                  ),
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(14),
+                      onTap: () => _showLogoutDialog(context),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.logout, color: Colors.white, size: 20),
+                          const SizedBox(width: 10),
+                          Text(
+                            "Sign Out",
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ),
@@ -149,27 +196,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ],
             ),
           ),
-        ],
-      ),
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: 3,
-        onTap: (index) {
-          if (index == 0) Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => HomeScreen()));
-          else if (index == 1) Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => MyTaskScreen()));
-          else if (index == 2) Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => CompletedScreen()));
-          else if (index == 3) Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => ProfileScreen()));
-        },
-        type: BottomNavigationBarType.fixed,
-        backgroundColor: Colors.white,
-        selectedItemColor: darkNavy,
-        unselectedItemColor: Colors.grey,
-        showSelectedLabels: false,
-        showUnselectedLabels: false,
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.home_outlined), label: "Home"),
-          BottomNavigationBarItem(icon: Icon(Icons.assignment_outlined), label: "Task"),
-          BottomNavigationBarItem(icon: Icon(Icons.check_circle_outline), label: "Completed"),
-          BottomNavigationBarItem(icon: Icon(Icons.person_outlined), label: "Profile"),
         ],
       ),
     );
@@ -216,33 +242,73 @@ class _ProfileScreenState extends State<ProfileScreen> {
     required String title,
     required VoidCallback onTap,
   }) {
-    // Bungkus dengan Padding untuk memberi jarak antar item
+    const Color borderGrey = Color(0xFFE5E7EB);
+    const Color menuTextSecondary = Color(0xFF6B7280);
+
     return Padding(
-      padding: const EdgeInsets.only(bottom: 16.0),
+      padding: const EdgeInsets.only(bottom: 12),
       child: Material(
-        color: bgGrey,
-        borderRadius: BorderRadius.circular(16), // Sesuaikan dengan desain
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
         child: InkWell(
           borderRadius: BorderRadius.circular(16),
           onTap: onTap,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            child: Row(
-              children: [
-                Icon(icon, color: darkNavy, size: 24),
-                const SizedBox(width: 20),
-                Expanded(
-                  child: Text(
-                    title,
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: textDark,
-                      fontSize: 16,
+          child: Container(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: borderGrey, width: 1.5),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.04),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                )
+              ],
+            ),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              child: Row(
+                children: [
+                  Container(
+                    width: 48,
+                    height: 48,
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [darkNavy, darkNavy.withOpacity(0.7)],
+                      ),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(icon, color: Colors.white, size: 24),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          title,
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: textDark,
+                            fontSize: 15,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          "Tap to manage",
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: menuTextSecondary,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                ),
-                Icon(Icons.arrow_forward_ios, color: textDark, size: 16),
-              ],
+                  Icon(Icons.arrow_forward_ios, color: menuTextSecondary, size: 14),
+                ],
+              ),
             ),
           ),
         ),

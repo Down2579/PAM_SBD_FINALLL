@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import '../api_service.dart';
 import '../models.dart';
 import 'detail_screen.dart';
@@ -14,6 +15,7 @@ class MyTaskScreen extends StatefulWidget {
 
 class _MyTaskScreenState extends State<MyTaskScreen> {
   final ApiService api = ApiService();
+  late Future<List<Item>> _itemsFuture;
 
   // Palet Warna
   final Color darkNavy = const Color(0xFF2B4263);
@@ -21,6 +23,20 @@ class _MyTaskScreenState extends State<MyTaskScreen> {
   final Color textDark = const Color(0xFF1F2937);
   final Color textSecondary = const Color(0xFF6B7280);
   final Color bgGrey = const Color(0xFFF5F7FA);
+  final Color errorRed = const Color(0xFFEF4444);
+  final Color successGreen = const Color(0xFF10B981);
+
+  @override
+  void initState() {
+    super.initState();
+    _itemsFuture = api.getMyItems();
+  }
+
+  Future<void> _refreshItems() async {
+    setState(() {
+      _itemsFuture = api.getMyItems();
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -138,7 +154,7 @@ class _MyTaskScreenState extends State<MyTaskScreen> {
 
   Widget _buildTaskItem(Item item) {
     bool isLost = item.tipeLaporan.toLowerCase() == "hilang";
-    String displayDate = item.waktu;
+    const Color borderGrey = Color(0xFFE5E7EB);
 
     return GestureDetector(
       onTap: () {
@@ -148,77 +164,122 @@ class _MyTaskScreenState extends State<MyTaskScreen> {
         );
       },
       child: Container(
-        margin: EdgeInsets.only(bottom: 20),
-        height: 155,
+        margin: EdgeInsets.only(bottom: 12),
         decoration: BoxDecoration(
-          color: bgGrey, 
-          borderRadius: BorderRadius.circular(20),
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: borderGrey, width: 1.5),
           boxShadow: [
             BoxShadow(
-              color: Colors.grey.withOpacity(0.1),
+              color: Colors.black.withOpacity(0.06),
               blurRadius: 10,
-              offset: Offset(0, 5),
+              offset: const Offset(0, 3),
             )
           ],
         ),
         child: Row(
           children: [
             Container(
-              width: 90,
+              width: 80,
+              height: 100,
               decoration: BoxDecoration(
-                color: darkNavy,
-                borderRadius: BorderRadius.circular(20),
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    isLost ? errorRed : successGreen,
+                    (isLost ? errorRed : successGreen).withOpacity(0.7),
+                  ],
+                ),
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(16),
+                  bottomLeft: Radius.circular(16),
+                ),
               ),
-              child: Center(
-                child: Icon(Icons.paste_rounded, color: Colors.white, size: 45),
+              child: Icon(
+                isLost ? Icons.search_off_outlined : Icons.inventory_2_outlined,
+                color: Colors.white,
+                size: 38,
               ),
             ),
             Expanded(
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 12, 12, 12),
+                padding: const EdgeInsets.all(12),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text(isLost ? "Lost!!" : "Found!!", style: TextStyle(fontWeight: FontWeight.w900, fontSize: 18, color: textDark)),
-                        Icon(Icons.more_vert, size: 20, color: Colors.grey),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: isLost
+                                ? errorRed.withOpacity(0.15)
+                                : successGreen.withOpacity(0.15),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(
+                            isLost ? "Lost" : "Found",
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                              color: isLost ? errorRed : successGreen,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            item.namaBarang,
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                              color: textDark,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
                       ],
                     ),
-                    SizedBox(height: 10),
-                    _buildIconText(Icons.inventory_2_outlined, item.namaBarang),
-                    SizedBox(height: 6),
-                    _buildIconText(Icons.location_on_outlined, item.lokasi ?? "-"),
-                    SizedBox(height: 6),
-                    _buildIconText(Icons.check_circle_outline, "Not found yet"),
-                    SizedBox(height: 6),
-                    _buildIconText(Icons.calendar_today_outlined, displayDate),
+                    const SizedBox(height: 6),
+                    Row(
+                      children: [
+                        Icon(Icons.location_on_outlined, size: 14, color: textSecondary),
+                        const SizedBox(width: 4),
+                        Expanded(
+                          child: Text(
+                            item.lokasi ?? "-",
+                            style: TextStyle(fontSize: 12, color: textSecondary),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        Icon(Icons.calendar_today_outlined, size: 14, color: textSecondary),
+                        const SizedBox(width: 4),
+                        Text(
+                          item.waktu,
+                          style: TextStyle(fontSize: 12, color: textSecondary),
+                        ),
+                      ],
+                    ),
                   ],
                 ),
               ),
             ),
+            Padding(
+              padding: const EdgeInsets.only(right: 12),
+              child: Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey[400]),
+            ),
           ],
         ),
       ),
-    );
-  }
-
-  Widget _buildIconText(IconData icon, String text) {
-    return Row(
-      children: [
-        Icon(icon, size: 16, color: textDark),
-        SizedBox(width: 8),
-        Expanded(
-          child: Text(
-            text,
-            style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: textDark),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-        ),
-      ],
     );
   }
 }

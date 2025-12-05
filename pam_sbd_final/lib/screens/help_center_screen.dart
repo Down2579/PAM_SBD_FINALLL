@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../notification_provider.dart';
 import 'home_screen.dart';
 import 'my_task_screen.dart';
 import 'completed_screen.dart';
@@ -11,12 +13,12 @@ class HelpCenterScreen extends StatefulWidget {
 }
 
 class _HelpCenterScreenState extends State<HelpCenterScreen> {
-  // Controller untuk mengambil teks dari TextField
   final TextEditingController _textController = TextEditingController();
 
   // --- PALET WARNA ---
-  final Color darkNavy = const Color(0xFF2B4263);
-  final Color accentBlue = const Color(0xFF4A90E2);
+  final Color darkNavy = const Color(0xFF1e293b);
+  final Color accentBlue = const Color(0xFF3b82f6);
+  final Color primaryPurple = const Color(0xFF7c3aed);
   final Color textDark = const Color(0xFF1F2937);
   final Color bubbleColor = const Color(0xFFE8EEF5);
 
@@ -31,85 +33,76 @@ class _HelpCenterScreenState extends State<HelpCenterScreen> {
     return Scaffold(
       backgroundColor: Colors.white,
 
-      // ================= 1. APP BAR =================
+      // ================= 1. APP BAR (DIMODIFIKASI) =================
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 1.0,
+        // Tombol kembali fungsional
+        leading: BackButton(color: textDark),
+        // Judul sekarang ada di AppBar
         title: Text(
           "Help Center",
           style: TextStyle(color: textDark, fontWeight: FontWeight.bold),
         ),
-        leading: Icon(
-          Icons.menu,
-          color: textDark,
-          size: 28,
-        ),
+        centerTitle: true,
         actions: [
-          Padding(
-            padding: const EdgeInsets.only(right: 16.0, top: 8.0),
-            child: GestureDetector(
-              onTap: () async {
-                await showNotificationsModal(context);
-              },
-              child: Stack(
-                alignment: Alignment.topRight,
-                children: [
-                  Icon(
-                    Icons.notifications_none_outlined,
-                    color: textDark,
-                    size: 30,
-                  ),
-                  Container(
-                    width: 18,
-                    height: 18,
-                    decoration: BoxDecoration(
-                      color: Colors.red,
-                      shape: BoxShape.circle,
-                      border: Border.all(color: Colors.white, width: 2),
-                    ),
-                    child: Center(
-                      child: Text(
-                        '3',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
+          // Ikon Notifikasi dengan badge dinamis
+          Consumer<NotificationProvider>(
+            builder: (context, notificationProvider, child) {
+              return GestureDetector(
+                onTap: () async {
+                  notificationProvider.reset();
+                  await showNotificationsModal(context);
+                },
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    const Icon(Icons.notifications_none_outlined, color: Colors.black, size: 28),
+                    if (notificationProvider.unreadCount > 0)
+                      Positioned(
+                        right: 0,
+                        top: 8,
+                        child: Container(
+                          padding: const EdgeInsets.all(2),
+                          decoration: BoxDecoration(
+                            color: Colors.red,
+                            shape: BoxShape.circle,
+                            border: Border.all(color: Colors.white, width: 1.5),
+                          ),
+                          constraints: const BoxConstraints(minWidth: 18, minHeight: 18),
+                          child: Center(
+                            child: Text(
+                              '${notificationProvider.unreadCount}',
+                              style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                              textAlign: TextAlign.center,
+                            ),
+                          ),
                         ),
                       ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
+                  ],
+                ),
+              );
+            },
           ),
+          const SizedBox(width: 16), // Memberi jarak di kanan
         ],
       ),
 
       // ================= 2. BODY KONTEN UTAMA =================
-      body: SingleChildScrollView( // Agar tidak overflow saat keyboard muncul
+      body: SingleChildScrollView(
         padding: const EdgeInsets.all(24.0),
         child: Column(
           children: [
-            // --- Header Judul ---
-            _buildHeader(),
-            const SizedBox(height: 40),
+            // ### MODIFIKASI: _buildHeader() DIHAPUS dari sini ###
+            // const SizedBox(height: 40),
 
-            // --- Judul Form ---
             Text(
               "How can we help you today?",
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: textDark,
-              ),
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: textDark),
             ),
             const SizedBox(height: 20),
-
-            // --- Text Input Bubble ---
             _buildTextInputBubble(),
             const SizedBox(height: 20),
-
-            // --- Tombol Aksi ---
             _buildActionButtons(),
           ],
         ),
@@ -117,17 +110,12 @@ class _HelpCenterScreenState extends State<HelpCenterScreen> {
 
       // ================= 3. BOTTOM NAVIGATION BAR =================
       bottomNavigationBar: BottomNavigationBar(
-        currentIndex: 0, // Asumsikan kembali ke home
+        currentIndex: 0,
         onTap: (index) {
-          if (index == 0) {
-            Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => HomeScreen()));
-          } else if (index == 1) {
-            Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => MyTaskScreen()));
-          } else if (index == 2) {
-            Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => CompletedScreen()));
-          } else if (index == 3) {
-            Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => ProfileScreen()));
-          }
+          if (index == 0) Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => HomeScreen()));
+          else if (index == 1) Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => MyTaskScreen()));
+          else if (index == 2) Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => CompletedScreen()));
+          else if (index == 3) Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => ProfileScreen()));
         },
         type: BottomNavigationBarType.fixed,
         backgroundColor: Colors.white,
@@ -145,115 +133,64 @@ class _HelpCenterScreenState extends State<HelpCenterScreen> {
     );
   }
 
-  // --- WIDGET HELPER: Header Judul ---
-  Widget _buildHeader() {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: [
-        SizedBox(
-          height: 60,
-          width: 60,
-          child: Image.asset(
-            'assets/images/logo.png', // Pastikan path logo benar
-            errorBuilder: (context, error, stackTrace) {
-              return Icon(Icons.inventory_2_outlined, size: 48, color: darkNavy);
-            },
-          ),
-        ),
-        const SizedBox(width: 16),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              "Help Center",
-              style: TextStyle(
-                fontSize: 26,
-                fontWeight: FontWeight.bold,
-                color: textDark,
-              ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              "Something looking for you",
-              style: TextStyle(
-                color: darkNavy,
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ],
-        )
-      ],
-    );
-  }
-
-  // --- WIDGET HELPER: Text Input Bubble ---
+  // --- WIDGET HELPER ---
   Widget _buildTextInputBubble() {
     return ClipPath(
       clipper: BubbleClipper(),
       child: Container(
-        padding: const EdgeInsets.fromLTRB(20, 10, 20, 25), // Padding disesuaikan
+        padding: const EdgeInsets.fromLTRB(20, 10, 20, 25),
         decoration: BoxDecoration(
           color: bubbleColor,
           boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.1),
-              blurRadius: 10,
-              offset: const Offset(0, 5),
-            ),
+            BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 10, offset: const Offset(0, 5)),
           ],
         ),
         child: TextField(
           controller: _textController,
-          maxLines: 5, // Atur jumlah baris
+          maxLines: 5,
           keyboardType: TextInputType.multiline,
-          decoration: InputDecoration(
+          decoration: const InputDecoration(
             hintText: "........",
-            border: InputBorder.none, // Hapus garis bawah
+            border: InputBorder.none,
           ),
         ),
       ),
     );
   }
 
-  // --- WIDGET HELPER: Tombol Aksi ---
   Widget _buildActionButtons() {
     return Row(
       mainAxisAlignment: MainAxisAlignment.end,
       children: [
-        // Tombol Undo
         ElevatedButton(
           onPressed: () {
-            _textController.clear(); // Bersihkan teks
+            _textController.clear();
           },
           style: ElevatedButton.styleFrom(
             backgroundColor: Colors.grey[600],
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(20),
-            ),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
             padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 12),
           ),
-          child: Text("Undo", style: TextStyle(color: Colors.white)),
+          child: const Text("Undo", style: TextStyle(color: Colors.white)),
         ),
         const SizedBox(width: 10),
-        // Tombol Send
         ElevatedButton(
           onPressed: () {
-            // Tambahkan logika untuk mengirim pesan di sini
             final message = _textController.text;
-            print("Pesan Terkirim: $message");
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text("Message sent!")),
-            );
+            if (message.isNotEmpty) {
+              print("Pesan Terkirim: $message");
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text("Message sent!")),
+              );
+              _textController.clear();
+            }
           },
           style: ElevatedButton.styleFrom(
             backgroundColor: darkNavy,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(20),
-            ),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
             padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 12),
           ),
-          child: Text("Send", style: TextStyle(color: Colors.white)),
+          child: const Text("Send", style: TextStyle(color: Colors.white)),
         ),
       ],
     );
@@ -261,8 +198,7 @@ class _HelpCenterScreenState extends State<HelpCenterScreen> {
 }
 
 
-// ================= CLIPPER KUSTOM UNTUK BENTUK BUBBLE =================
-// (Sama seperti yang digunakan di notification_screen.dart)
+// ================= CUSTOM CLIPPER =================
 class BubbleClipper extends CustomClipper<Path> {
   @override
   Path getClip(Size size) {
@@ -282,7 +218,6 @@ class BubbleClipper extends CustomClipper<Path> {
     path.arcToPoint(Offset(0, size.height - radius - tailSize), radius: Radius.circular(radius));
     path.lineTo(0, radius);
     path.arcToPoint(Offset(radius, 0), radius: Radius.circular(radius));
-
     path.close();
     return path;
   }

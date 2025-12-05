@@ -51,7 +51,9 @@ class _AllItemsScreenState extends State<AllItemsScreen> {
   String userName = "User";
 
   // --- PALET WARNA ---
-  final Color darkNavy = const Color(0xFF2B4263);
+  final Color darkNavy = const Color(0xFF1e293b);
+  final Color accentBlue = const Color(0xFF3b82f6);
+  final Color primaryPurple = const Color(0xFF7c3aed);
   final Color textDark = const Color(0xFF1F2937);
   final Color textLight = const Color(0xFF6D6D6D);
   final Color bgLightGrey = const Color(0xFFF5F5F5);
