@@ -8,7 +8,7 @@ class CreateLostfoundSchema extends Migration
 {
     public function up()
     {
-        // Users
+        // USERS
         Schema::create('users', function (Blueprint $table) {
             $table->id();
             $table->string('nama_lengkap',100);
@@ -20,7 +20,7 @@ class CreateLostfoundSchema extends Migration
             $table->timestampsTz();
         });
 
-        // Kategori
+        // KATEGORI
         Schema::create('kategori', function (Blueprint $table) {
             $table->id();
             $table->string('nama_kategori',50)->unique();
@@ -28,7 +28,7 @@ class CreateLostfoundSchema extends Migration
             $table->timestamps();
         });
 
-        // Lokasi
+        // LOKASI
         Schema::create('lokasi', function (Blueprint $table) {
             $table->id();
             $table->string('nama_lokasi',100)->unique();
@@ -36,14 +36,23 @@ class CreateLostfoundSchema extends Migration
             $table->timestamps();
         });
 
-        // Barang
+        // BARANG (Laporan hilang/ditemukan)
         Schema::create('barang', function (Blueprint $table) {
             $table->id();
             $table->string('nama_barang',100);
             $table->text('deskripsi');
             $table->string('gambar_url')->nullable();
-            $table->enum('tipe_laporan',['hilang','ditemukan']);
-            $table->enum('status',['open','proses_klaim','selesai'])->default('open');
+
+            $table->enum('tipe_laporan', ['hilang','ditemukan']);
+            $table->enum('status', ['open','proses_klaim','selesai'])->default('open');
+
+            $table->enum('status_verifikasi', [
+                'belum_diverifikasi',
+                'menunggu_pemilik',
+                'diterima_pemilik',
+                'ditolak_pemilik'
+            ])->default('belum_diverifikasi');
+
             $table->date('tanggal_kejadian')->nullable();
 
             $table->foreignId('id_pelapor')->constrained('users')->onDelete('cascade');
@@ -53,18 +62,46 @@ class CreateLostfoundSchema extends Migration
             $table->timestampsTz();
         });
 
-        // Pengambilan
-        Schema::create('pengambilan', function (Blueprint $table) {
+        // KLAIM PENEMU (FORM PENEMU BARU)
+        Schema::create('klaim_penemuan', function (Blueprint $table) {
             $table->id();
             $table->foreignId('id_barang')->constrained('barang')->onDelete('cascade');
-            $table->foreignId('id_pengambil')->constrained('users')->onDelete('cascade');
-            $table->text('pesan_pengambilan');
-            $table->enum('status_pengambilan',['pending','disetujui','ditolak'])->default('pending');
-            $table->timestampTz('tanggal_pengambilan')->useCurrent();
-            $table->timestamps();
+            $table->foreignId('id_penemu')->constrained('users')->onDelete('cascade');
+
+            $table->string('lokasi_ditemukan',150);
+            $table->text('deskripsi_penemuan')->nullable();
+            $table->string('foto_penemuan')->nullable();
+
+            $table->enum('status_klaim', [
+                'menunggu_verifikasi_pemilik',
+                'diterima_pemilik',
+                'ditolak_pemilik',
+                'divalidasi_admin',
+                'ditolak_admin'
+            ])->default('menunggu_verifikasi_pemilik');
+
+            $table->timestampsTz();
         });
 
-        // Foto Barang
+        // PENGAMBILAN (SESUDAH KLAIM DITERIMA)
+        Schema::create('pengambilan', function (Blueprint $table) {
+            $table->id();
+
+            $table->foreignId('id_klaim')->constrained('klaim_penemuan')->onDelete('cascade');
+
+            $table->foreignId('id_pemilik')->constrained('users')->onDelete('cascade');
+            $table->foreignId('id_penemu')->constrained('users')->onDelete('cascade');
+
+            $table->string('lokasi_pengambilan')->nullable();
+            $table->timestampTz('tanggal_pengambilan')->nullable();
+            $table->text('catatan')->nullable();
+
+            $table->enum('status_pengambilan', ['menunggu','selesai'])->default('menunggu');
+
+            $table->timestampsTz();
+        });
+
+        // FOTO BARANG
         Schema::create('foto_barang', function (Blueprint $table) {
             $table->id();
             $table->foreignId('id_barang')->constrained('barang')->onDelete('cascade');
@@ -72,7 +109,7 @@ class CreateLostfoundSchema extends Migration
             $table->timestampsTz();
         });
 
-        // Bukti Pengambilan
+        // BUKTI PENGAMBILAN
         Schema::create('bukti_pengambilan', function (Blueprint $table) {
             $table->id();
             $table->foreignId('id_barang')->constrained('barang')->onDelete('cascade');
@@ -83,7 +120,7 @@ class CreateLostfoundSchema extends Migration
             $table->timestampsTz();
         });
 
-        // Notifikasi
+        // NOTIFIKASI
         Schema::create('notifikasi', function (Blueprint $table) {
             $table->id();
             $table->foreignId('id_pengguna')->constrained('users')->onDelete('cascade');
@@ -93,7 +130,7 @@ class CreateLostfoundSchema extends Migration
             $table->timestampTz('created_at')->useCurrent();
         });
 
-        // Activity Logs
+        // ACTIVITY LOGS
         Schema::create('activity_logs', function (Blueprint $table) {
             $table->id();
             $table->foreignId('id_pengguna')->nullable()->constrained('users')->onDelete('set null');
@@ -110,6 +147,7 @@ class CreateLostfoundSchema extends Migration
         Schema::dropIfExists('bukti_pengambilan');
         Schema::dropIfExists('foto_barang');
         Schema::dropIfExists('pengambilan');
+        Schema::dropIfExists('klaim_penemuan');
         Schema::dropIfExists('barang');
         Schema::dropIfExists('lokasi');
         Schema::dropIfExists('kategori');
