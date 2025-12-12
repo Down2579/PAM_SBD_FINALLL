@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'dart:async';
 import 'package:provider/provider.dart';
-import 'providers.dart'; // Import provider kamu
-import 'screens/login_screen.dart';
-import 'screens/home_screen.dart';
+import '../providers.dart'; 
+import '../screens/login_screen.dart';
+import '../screens/home_screen.dart';
+import '../screens/admin/admin_main_screen.dart'; // 1. Tambahkan Import Admin Screen
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -21,16 +22,28 @@ class _SplashScreenState extends State<SplashScreen> {
   }
 
   startSplashScreen() async {
-    // Timer 3 Detik
+    // Timer 3 Detik untuk menampilkan logo
     var duration = const Duration(seconds: 3);
-    return Timer(duration, () {
+    return Timer(duration, () async {
       // Pastikan widget masih ada di tree sebelum mengakses context
       if (mounted) {
-        // Ambil data dari AuthProvider
+        // Ambil instance AuthProvider
         final auth = Provider.of<AuthProvider>(context, listen: false);
 
-        // Cek Logika: Kalau user ada (sudah login) ke Home, kalau tidak ke Login
-        Widget halamanTujuan = auth.user != null ? HomeScreen() : LoginScreen();
+        Widget halamanTujuan;
+
+        // 2. LOGIC PENGECEKAN ROLE SAAT AUTO LOGIN
+        if (auth.currentUser != null) {
+          // Cek apakah user adalah admin
+          if (auth.currentUser!.role == 'admin') {
+            halamanTujuan = const AdminMainScreen();
+          } else {
+            halamanTujuan = const HomeScreen();
+          }
+        } else {
+          // Belum login
+          halamanTujuan = const LoginScreen();
+        }
 
         Navigator.pushReplacement(
           context,
@@ -42,21 +55,20 @@ class _SplashScreenState extends State<SplashScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Palet Warna (konsisten dengan aplikasi Anda)
+    // Palet Warna
     final Color darkNavy = const Color(0xFF2B4263);
-    final Color accentBlue = const Color(0xFF4A90E2);
 
     return Scaffold(
       backgroundColor: Colors.white,
       body: Stack(
-        fit: StackFit.expand, // Membuat Stack memenuhi seluruh layar
+        fit: StackFit.expand,
         children: [
           // ================= LAPISAN 1: BACKGROUND ATAS =================
           Align(
             alignment: Alignment.topCenter,
             child: Image.asset(
-              'assets/images/splash_background.png', // Pastikan file ini ada
-              errorBuilder: (context, error, stackTrace) => const SizedBox.shrink(), // Sembunyikan jika error
+              'assets/images/splash_background.png', 
+              errorBuilder: (context, error, stackTrace) => const SizedBox.shrink(),
             ),
           ),
 
@@ -64,9 +76,9 @@ class _SplashScreenState extends State<SplashScreen> {
           Align(
             alignment: Alignment.bottomCenter,
             child: Transform.flip(
-              flipY: true, // Membalik gambar secara vertikal
+              flipY: true, 
               child: Image.asset(
-                'assets/images/splash_background.png', // Pastikan file ini ada
+                'assets/images/splash_background.png',
                 errorBuilder: (context, error, stackTrace) => const SizedBox.shrink(),
               ),
             ),
@@ -75,21 +87,35 @@ class _SplashScreenState extends State<SplashScreen> {
           // ================= LAPISAN 3: LOGO DI TENGAH =================
           Center(
             child: Column(
-              mainAxisSize: MainAxisSize.min, // Membuat Column sekecil mungkin
+              mainAxisSize: MainAxisSize.min,
               children: [
                 Image.asset(
                   "assets/images/logo.png", 
-                  width: 180,
-                  height: 180,
+                  width: 150,
+                  height: 150,
+                  // Fallback jika gambar logo belum ada
+                  errorBuilder: (ctx, err, stack) => Icon(
+                    Icons.inventory_2_rounded, 
+                    size: 100, 
+                    color: darkNavy
+                  ),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 24),
                 Text(
                   "LOST & FOUND",
                   style: TextStyle(
                     fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                    color: darkNavy, // Menggunakan warna yang konsisten
-                    letterSpacing: 1.5,
+                    fontWeight: FontWeight.w800, 
+                    color: darkNavy,
+                    letterSpacing: 2.0, 
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  "Kemudahan Mencari Barang Anda",
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Colors.grey[500],
                   ),
                 ),
               ],

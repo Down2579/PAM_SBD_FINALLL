@@ -3,95 +3,254 @@ class User {
   final String namaLengkap;
   final String nim;
   final String email;
-  final String role;
-  final String? token; // Token bisa null di awal
   final String? nomorTelepon;
+  final String role; // 'mahasiswa' or 'admin'
 
   User({
     required this.id,
     required this.namaLengkap,
     required this.nim,
     required this.email,
-    required this.role,
-    this.token,
     this.nomorTelepon,
+    required this.role,
   });
 
-  factory User.fromJson(Map<String, dynamic> json, String? token) {
+  factory User.fromJson(Map<String, dynamic> json) {
     return User(
       id: json['id'],
-      namaLengkap: json['nama_lengkap'],
-      nim: json['nim'] ?? '-',
-      email: json['email'],
-      role: json['role'] ?? 'mahasiswa',
+      namaLengkap: json['nama_lengkap'] ?? '',
+      nim: json['nim'] ?? '',
+      email: json['email'] ?? '',
       nomorTelepon: json['nomor_telepon'],
-      token: token,
+      role: json['role'] ?? 'mahasiswa',
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'nama_lengkap': namaLengkap,
+      'nim': nim,
+      'email': email,
+      'nomor_telepon': nomorTelepon,
+      'role': role,
+    };
+  }
+}
+
+class Kategori {
+  final int id;
+  final String namaKategori;
+  final String? deskripsi;
+
+  Kategori({
+    required this.id,
+    required this.namaKategori,
+    this.deskripsi,
+  });
+
+  factory Kategori.fromJson(Map<String, dynamic> json) {
+    return Kategori(
+      id: json['id'],
+      namaKategori: json['nama_kategori'] ?? '',
+      deskripsi: json['deskripsi'],
     );
   }
 }
 
-class Item {
+class Lokasi {
+  final int id;
+  final String namaLokasi;
+  final String? deskripsi;
+
+  Lokasi({
+    required this.id,
+    required this.namaLokasi,
+    this.deskripsi,
+  });
+
+  factory Lokasi.fromJson(Map<String, dynamic> json) {
+    return Lokasi(
+      id: json['id'],
+      namaLokasi: json['nama_lokasi'] ?? '',
+      deskripsi: json['deskripsi'],
+    );
+  }
+}
+
+class FotoBarang {
+  final int id;
+  final int idBarang;
+  final String urlFoto;
+
+  FotoBarang({
+    required this.id,
+    required this.idBarang,
+    required this.urlFoto,
+  });
+
+  factory FotoBarang.fromJson(Map<String, dynamic> json) {
+    return FotoBarang(
+      id: json['id'],
+      idBarang: json['id_barang'],
+      urlFoto: json['url_foto'] ?? '',
+    );
+  }
+}
+
+class Barang {
   final int id;
   final String namaBarang;
   final String deskripsi;
-  final String tipeLaporan; // 'hilang' atau 'ditemukan'
-  final String status;
-  final DateTime tanggalKejadian; // Data asli berupa DateTime
-
-  final String? lokasi;
-  final String? kategori;
-
-  final int idPelapor;
-  final String? pelaporNama;
-
   final String? gambarUrl;
+  final String tipeLaporan; // 'hilang' | 'ditemukan'
+  final String status; // 'open' | 'proses_klaim' | 'selesai'
+  final String statusVerifikasi;
+  final DateTime? tanggalKejadian;
+  final DateTime createdAt;
+  
+  // Relations
+  final User? pelapor;
+  final Kategori? kategori;
+  final Lokasi? lokasi;
+  final List<FotoBarang> fotoLain;
 
-  Item({
+  Barang({
     required this.id,
     required this.namaBarang,
     required this.deskripsi,
+    this.gambarUrl,
     required this.tipeLaporan,
     required this.status,
-    required this.tanggalKejadian,
-    this.lokasi,
+    required this.statusVerifikasi,
+    this.tanggalKejadian,
+    required this.createdAt,
+    this.pelapor,
     this.kategori,
-    required this.idPelapor,
-    this.pelaporNama,
-    this.gambarUrl,
+    this.lokasi,
+    this.fotoLain = const [],
   });
 
-  factory Item.fromJson(Map<String, dynamic> json) {
-    return Item(
+  factory Barang.fromJson(Map<String, dynamic> json) {
+    var listFoto = json['foto'] as List? ?? [];
+    List<FotoBarang> fotoList = listFoto.map((i) => FotoBarang.fromJson(i)).toList();
+
+    return Barang(
       id: json['id'],
-      namaBarang: json['nama_barang'],
-      deskripsi: json['deskripsi'],
-      // Pastikan backend mengirim 'tipe_laporan' (snake_case)
-      tipeLaporan: json['tipe_laporan'] ?? 'hilang', 
+      namaBarang: json['nama_barang'] ?? 'Tanpa Nama',
+      deskripsi: json['deskripsi'] ?? '',
+      gambarUrl: json['gambar_url'],
+      tipeLaporan: json['tipe_laporan'] ?? 'hilang',
       status: json['status'] ?? 'open',
-      // Parsing string tanggal dari API ke DateTime Dart
-      tanggalKejadian: DateTime.parse(json['tanggal_kejadian'] ?? DateTime.now().toString()),
-      lokasi: json['lokasi_nama'] ?? json['lokasi'] ?? '-',
-      kategori: json['kategori_nama'] ?? 'Lainnya',
-      // Pastikan konversi ke int aman
-      idPelapor: int.tryParse(json['id_pelapor'].toString()) ?? 0,
-      pelaporNama: json['pelapor_nama'] ?? 'Anonim',
-      gambarUrl: json['gambar_url'] ?? json['gambar'],
+      statusVerifikasi: json['status_verifikasi'] ?? 'belum_diverifikasi',
+      tanggalKejadian: json['tanggal_kejadian'] != null 
+          ? DateTime.parse(json['tanggal_kejadian']) 
+          : null,
+      createdAt: DateTime.parse(json['created_at']), // Laravel timestampsTz standard ISO8601
+      
+      // Mapping Relasi (Nested Object)
+      pelapor: json['pelapor'] != null ? User.fromJson(json['pelapor']) : null,
+      kategori: json['kategori'] != null ? Kategori.fromJson(json['kategori']) : null,
+      lokasi: json['lokasi'] != null ? Lokasi.fromJson(json['lokasi']) : null,
+      fotoLain: fotoList,
     );
   }
+}
 
-  // ==============================================================
-  // GETTER TAMBAHAN (PENTING AGAR UI TIDAK ERROR)
-  // ==============================================================
+class KlaimPenemuan {
+  final int id;
+  final int idBarang;
+  final int idPenemu;
+  final String lokasiDitemukan;
+  final String? deskripsiPenemuan;
+  final String? fotoPenemuan;
+  final String statusKlaim; // 'menunggu_verifikasi_pemilik', 'diterima_pemilik', etc.
+  final DateTime createdAt;
 
-  // 1. Getter 'waktu': Mengubah DateTime ke String format "MM/dd/yyyy"
-  // Ini yang dicari oleh error "getter waktu isn't defined"
-  String get waktu {
-    return "${tanggalKejadian.month}/${tanggalKejadian.day}/${tanggalKejadian.year}";
+  // Relations
+  final User? penemu;
+  final Barang? barang;
+
+  KlaimPenemuan({
+    required this.id,
+    required this.idBarang,
+    required this.idPenemu,
+    required this.lokasiDitemukan,
+    this.deskripsiPenemuan,
+    this.fotoPenemuan,
+    required this.statusKlaim,
+    required this.createdAt,
+    this.penemu,
+    this.barang,
+  });
+
+  factory KlaimPenemuan.fromJson(Map<String, dynamic> json) {
+    return KlaimPenemuan(
+      id: json['id'],
+      idBarang: json['id_barang'],
+      idPenemu: json['id_penemu'],
+      lokasiDitemukan: json['lokasi_ditemukan'] ?? '',
+      deskripsiPenemuan: json['deskripsi_penemuan'],
+      fotoPenemuan: json['foto_penemuan'],
+      statusKlaim: json['status_klaim'] ?? 'menunggu_verifikasi_pemilik',
+      createdAt: DateTime.parse(json['created_at']),
+      
+      // Relasi opsional, tergantung apakah backend mengirimnya
+      penemu: json['penemu'] != null ? User.fromJson(json['penemu']) : null,
+      barang: json['barang'] != null ? Barang.fromJson(json['barang']) : null,
+    );
   }
+}
 
-  // 2. Getter 'userId': Alias untuk idPelapor (jika UI pake item.userId)
-  int get userId => idPelapor;
+class BuktiPengambilan {
+  final int id;
+  final int idBarang;
+  final String fotoBukti;
+  final String? catatan;
+  final DateTime tanggalPengambilan;
 
-  // 3. Getter 'gambar': Alias untuk gambarUrl (jika UI pake item.gambar)
-  String? get gambar => gambarUrl;
+  BuktiPengambilan({
+    required this.id,
+    required this.idBarang,
+    required this.fotoBukti,
+    this.catatan,
+    required this.tanggalPengambilan,
+  });
+
+  factory BuktiPengambilan.fromJson(Map<String, dynamic> json) {
+    return BuktiPengambilan(
+      id: json['id'],
+      idBarang: json['id_barang'],
+      fotoBukti: json['foto_bukti'] ?? '',
+      catatan: json['catatan'],
+      tanggalPengambilan: DateTime.parse(json['tanggal_pengambilan']),
+    );
+  }
+}
+
+class Notifikasi {
+  final int id;
+  final String judul;
+  final String pesan;
+  final bool sudahDibaca;
+  final DateTime createdAt;
+
+  Notifikasi({
+    required this.id,
+    required this.judul,
+    required this.pesan,
+    required this.sudahDibaca,
+    required this.createdAt,
+  });
+
+  factory Notifikasi.fromJson(Map<String, dynamic> json) {
+    return Notifikasi(
+      id: json['id'],
+      judul: json['judul'] ?? '',
+      pesan: json['pesan'] ?? '',
+      // Konversi integer 0/1 atau boolean dari JSON
+      sudahDibaca: json['sudah_dibaca'] == true || json['sudah_dibaca'] == 1,
+      createdAt: DateTime.parse(json['created_at']),
+    );
+  }
 }

@@ -1,169 +1,426 @@
+import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/material.dart';
-import 'api_service.dart';
-import 'models.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'api_service.dart';
+import 'models.dart';
+
+// ============================================================================
+// 1. AUTH PROVIDER (Login, Register, Session)
+// ============================================================================
 class AuthProvider with ChangeNotifier {
-  User? _user;
+  final ApiService _apiService = ApiService();
+  
+  User? _currentUser;
   bool _isLoading = false;
-  final ApiService _api = ApiService();
+  String? _errorMessage;
 
-  User? get user => _user;
-  bool get isLoading => _isLoading; 
+  User? get currentUser => _currentUser;
+  bool get isLoading => _isLoading;
+  String? get errorMessage => _errorMessage;
+  bool get isLoggedIn => _currentUser != null;
 
-  // ==================== LOGIN ====================
-  Future<bool> login(String nim, String password) async {
+  /// Cek sesi login saat aplikasi dibuka (Auto Login)
+  Future<bool> tryAutoLogin() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (!prefs.containsKey('user') || !prefs.containsKey('token')) {
+      return false;
+    }
+    try {
+      final userData = jsonDecode(prefs.getString('user') ?? '{}');
+      _currentUser = User.fromJson(userData);
+      notifyListeners();
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  Future<bool> login(String emailOrNim, String password) async {
     _isLoading = true;
+    _errorMessage = null;
     notifyListeners();
 
     try {
-      // 1. Request ke API
-      _user = await _api.login(nim, password);
-
-      // 2. Jika login sukses & data user ada, simpan ke memori HP
-      if (_user != null) {
-        SharedPreferences prefs = await SharedPreferences.getInstance();
-        
-        // A. Simpan Token & ID (Penting untuk API calls berikutnya)
-        if (_user!.token != null) {
-          await prefs.setString('token', _user!.token!);
-        }
-        await prefs.setInt('userId', _user!.id);
-
-        // B. Simpan Data Profil 
-        // PENTING: Key menggunakan huruf kecil agar sesuai dengan HomeScreen & ProfileScreen
-        await prefs.setString('username', _user!.namaLengkap); 
-        await prefs.setString('nim', _user!.nim);
-        await prefs.setString('email', _user!.email); 
-        await prefs.setString('hp', _user!.nomorTelepon ?? "-"); 
-        
-        print("DEBUG: Data user disimpan. Nama: ${_user!.namaLengkap}");
-      }
-
+      final data = await _apiService.login(emailOrNim, password);
+      _currentUser = User.fromJson(data['user']);
       _isLoading = false;
       notifyListeners();
       return true;
-
     } catch (e) {
-      print("Login Error: $e");
       _isLoading = false;
+      _errorMessage = e.toString().replaceAll('Exception: ', '');
       notifyListeners();
       return false;
     }
   }
 
-  // ==================== REGISTER ====================
-  Future<bool> register(String nama, String nim, String email, String hp, String password) async {
+  Future<bool> register(Map<String, dynamic> data) async {
     _isLoading = true;
+    _errorMessage = null;
     notifyListeners();
+
     try {
-      await _api.register({
-        'nama_lengkap': nama,
-        'nim': nim,
-        'email': email,
-        'nomor_telepon': hp,
-        'password': password,
-        'role': 'mahasiswa',
-      });
+      final res = await _apiService.register(data);
+      _currentUser = User.fromJson(res['user']);
+      
+      // Simpan sesi otomatis setelah register
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('token', res['token']);
+      await prefs.setString('user', jsonEncode(res['user']));
       
       _isLoading = false;
       notifyListeners();
       return true;
     } catch (e) {
-      print("Register Error: $e");
       _isLoading = false;
+      _errorMessage = e.toString().replaceAll('Exception: ', '');
       notifyListeners();
       return false;
     }
   }
 
-  // ==================== UPDATE PROFILE ====================
-  Future<bool> updateProfile(String nama, String hp, String email) async {
-    _isLoading = true;
-    notifyListeners();
-
-    try {
-      if (_user == null) {
-        _isLoading = false;
-        notifyListeners();
-        return false;
-      }
-
-      // 1. Panggil API Update
-      bool success = await _api.updateProfile(_user!.id, {
-        'nama_lengkap': nama,
-        'nomor_telepon': hp,
-        'email': email,
-      });
-
-      // 2. Jika sukses, update data Lokal agar UI langsung berubah
-      if (success) {
-        SharedPreferences prefs = await SharedPreferences.getInstance();
-        
-        // Update Memori HP (Key huruf kecil)
-        await prefs.setString('username', nama);
-        await prefs.setString('hp', hp);
-        await prefs.setString('email', email);
-
-        // Update Object User di State Aplikasi
-        _user = User(
-          id: _user!.id,
-          namaLengkap: nama,
-          nim: _user!.nim, // NIM biasanya tidak berubah
-          email: email,
-          nomorTelepon: hp,
-          role: _user!.role,
-          token: _user!.token
-        );
-      }
-
-      _isLoading = false;
-      notifyListeners();
-      return success;
-
-    } catch (e) {
-      print("Update Profile Error: $e");
-      _isLoading = false;
-      notifyListeners();
-      return false;
-    }
-  }
-
-  // ==================== LOGOUT ====================
   Future<void> logout() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    await prefs.clear(); // Hapus SEMUA data sesi (Token, Nama, dll)
-    _user = null;
+    try {
+      await _apiService.logout();
+    } catch (e) {
+      // Ignore logout errors
+    }
+    _currentUser = null;
+    notifyListeners();
+  }
+}
+
+// ============================================================================
+// 2. BARANG PROVIDER (CRUD Barang)
+// ============================================================================
+class BarangProvider with ChangeNotifier {
+  final ApiService _apiService = ApiService();
+
+  List<Barang> _listBarang = [];
+  Barang? _selectedBarang;
+  
+  bool _isLoading = false;
+  String? _errorMessage;
+  
+  // Pagination (Opsional jika backend mendukung)
+  int _currentPage = 1;
+  bool _hasMore = true;
+
+  List<Barang> get listBarang => _listBarang;
+  Barang? get selectedBarang => _selectedBarang;
+  bool get isLoading => _isLoading;
+  String? get errorMessage => _errorMessage;
+
+  Future<void> fetchBarang({
+    bool refresh = false, 
+    String? type, 
+    String? status, 
+    String? search
+  }) async {
+    if (refresh) {
+      _currentPage = 1;
+      _listBarang = [];
+      _hasMore = true;
+    }
+
+    if (!_hasMore && !refresh) return;
+
+    _isLoading = true;
+    if (refresh) notifyListeners(); 
+
+    try {
+      final response = await _apiService.getBarang(
+        page: _currentPage,
+        type: type,
+        status: status,
+        search: search
+      );
+
+      final List<dynamic> data = response['data'];
+      final Map<String, dynamic>? meta = response['meta'];
+
+      List<Barang> newItems = data.map((e) => Barang.fromJson(e)).toList();
+
+      if (refresh) {
+        _listBarang = newItems;
+      } else {
+        _listBarang.addAll(newItems);
+      }
+
+      // Handle Pagination
+      if (meta != null) {
+        if (_currentPage >= (meta['last_page'] ?? 1)) {
+          _hasMore = false;
+        } else {
+          _currentPage++;
+        }
+      } else {
+        if (newItems.isEmpty) _hasMore = false;
+      }
+
+      _isLoading = false;
+      notifyListeners();
+    } catch (e) {
+      _isLoading = false;
+      _errorMessage = e.toString();
+      notifyListeners();
+    }
+  }
+
+  Future<void> getDetail(int id) async {
+    _isLoading = true;
+    _selectedBarang = null; // Reset agar UI menampilkan loading
+    notifyListeners();
+    
+    try {
+      final data = await _apiService.getDetailBarang(id);
+      _selectedBarang = Barang.fromJson(data);
+    } catch (e) {
+      _errorMessage = e.toString();
+    }
+    
+    _isLoading = false;
     notifyListeners();
   }
 
-  // ==================== CEK SESI (AUTO LOGIN) ====================
-  // Dipanggil di main.dart atau splash screen
-  Future<void> checkSession() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    String? token = prefs.getString('token');
+  Future<bool> addBarang(Map<String, String> fields, File? image, List<File>? others) async {
+    _isLoading = true;
+    notifyListeners();
     
-    // Jika ada token tersimpan, kembalikan user ke state login
-    if (token != null && token.isNotEmpty) {
-      // Ambil data profil yang tersimpan di HP
-      int savedId = prefs.getInt('userId') ?? 0;
-      String savedName = prefs.getString('username') ?? "User";
-      String savedNim = prefs.getString('nim') ?? "-";
-      String savedEmail = prefs.getString('email') ?? "-";
-      String savedPhone = prefs.getString('hp') ?? "-";
+    try {
+      await _apiService.createBarang(fields, image, others);
+      await fetchBarang(refresh: true); // Refresh list setelah upload sukses
+      _isLoading = false;
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _isLoading = false;
+      _errorMessage = e.toString();
+      notifyListeners();
+      return false;
+    }
+  }
+}
 
-      // Rekonstruksi Object User
-      _user = User(
-        id: savedId,
-        namaLengkap: savedName,
-        nim: savedNim,
-        email: savedEmail,
-        nomorTelepon: savedPhone,
-        role: "mahasiswa", 
-        token: token
-      );
+// ============================================================================
+// 3. KLAIM PROVIDER (User & Admin Actions)
+// ============================================================================
+class KlaimProvider with ChangeNotifier {
+  final ApiService _apiService = ApiService();
+
+  List<KlaimPenemuan> _klaimList = [];
+  bool _isLoading = false;
+
+  List<KlaimPenemuan> get klaimList => _klaimList;
+  bool get isLoading => _isLoading;
+
+  /// Load klaim spesifik untuk barang tertentu (Detail Page)
+  Future<void> loadKlaimByBarang(int idBarang) async {
+    _isLoading = true;
+    notifyListeners();
+    try {
+      final List<dynamic> data = await _apiService.getKlaimByBarang(idBarang);
+      _klaimList = data.map((e) => KlaimPenemuan.fromJson(e)).toList();
+    } catch (e) {
+      _klaimList = [];
+    }
+    _isLoading = false;
+    notifyListeners();
+  }
+
+  /// [ADMIN] Load semua klaim yang masuk
+  Future<void> fetchAllKlaim() async {
+    _isLoading = true;
+    notifyListeners();
+    try {
+      final List<dynamic> data = await _apiService.getAllKlaim();
+      _klaimList = data.map((e) => KlaimPenemuan.fromJson(e)).toList();
+    } catch (e) {
+      print("Error fetching all klaim: $e");
+      _klaimList = [];
+    }
+    _isLoading = false;
+    notifyListeners();
+  }
+
+  /// User mengajukan klaim baru
+  Future<bool> ajukanKlaim(Map<String, String> fields, File? foto) async {
+    _isLoading = true;
+    notifyListeners();
+    try {
+      await _apiService.createKlaim(fields, foto);
+      _isLoading = false;
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    }
+  }
+
+  /// Update status klaim (Terima/Tolak oleh Admin/Pemilik)
+  Future<bool> updateStatus(int klaimId, String status) async {
+    try {
+      bool success = await _apiService.updateStatusKlaim(klaimId, status);
+      if (success) {
+        // Refresh list agar status terbaru muncul
+        await fetchAllKlaim();
+      }
+      return success;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  /// Upload bukti penyerahan barang (Finalisasi)
+  Future<bool> uploadBukti(int idBarang, File foto, String catatan) async {
+    _isLoading = true;
+    notifyListeners();
+    try {
+      await _apiService.uploadBukti(idBarang, foto, catatan);
+      _isLoading = false;
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    }
+  }
+}
+
+// ============================================================================
+// 4. GENERAL PROVIDER (Master Data: Kategori, Lokasi, Notifikasi)
+// ============================================================================
+class GeneralProvider with ChangeNotifier {
+  final ApiService _apiService = ApiService();
+
+  List<Kategori> _kategoriList = [];
+  List<Lokasi> _lokasiList = [];
+  List<Notifikasi> _notifList = [];
+
+  List<Kategori> get kategoriList => _kategoriList;
+  List<Lokasi> get lokasiList => _lokasiList;
+  List<Notifikasi> get notifList => _notifList;
+
+  Future<void> loadMasterData() async {
+    try {
+      final List<dynamic> k = await _apiService.getKategori();
+      final List<dynamic> l = await _apiService.getLokasi();
+      
+      _kategoriList = k.map((e) => Kategori.fromJson(e)).toList();
+      _lokasiList = l.map((e) => Lokasi.fromJson(e)).toList();
       
       notifyListeners();
+    } catch (e) {
+      print("Error loading master data: $e");
+    }
+  }
+
+  // --- CRUD KATEGORI ---
+
+  Future<bool> addKategori(String nama) async {
+    try {
+      final newItem = await _apiService.createKategori(nama);
+      _kategoriList.add(Kategori.fromJson(newItem));
+      notifyListeners();
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  Future<bool> editKategori(int id, String namaBaru) async {
+    try {
+      bool success = await _apiService.updateKategori(id, namaBaru);
+      if (success) {
+        final index = _kategoriList.indexWhere((item) => item.id == id);
+        if (index != -1) {
+          _kategoriList[index] = Kategori(
+            id: id, 
+            namaKategori: namaBaru, 
+            deskripsi: _kategoriList[index].deskripsi
+          );
+          notifyListeners();
+        }
+      }
+      return success;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  Future<bool> deleteKategori(int id) async {
+    try {
+      bool success = await _apiService.deleteKategori(id);
+      if (success) {
+        _kategoriList.removeWhere((item) => item.id == id);
+        notifyListeners();
+      }
+      return success;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  // --- CRUD LOKASI ---
+
+  Future<bool> addLokasi(String nama) async {
+    try {
+      final newItem = await _apiService.createLokasi(nama);
+      _lokasiList.add(Lokasi.fromJson(newItem));
+      notifyListeners();
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  Future<bool> editLokasi(int id, String namaBaru) async {
+    try {
+      bool success = await _apiService.updateLokasi(id, namaBaru);
+      if (success) {
+        final index = _lokasiList.indexWhere((item) => item.id == id);
+        if (index != -1) {
+          _lokasiList[index] = Lokasi(
+            id: id, 
+            namaLokasi: namaBaru, 
+            deskripsi: _lokasiList[index].deskripsi
+          );
+          notifyListeners();
+        }
+      }
+      return success;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  Future<bool> deleteLokasi(int id) async {
+    try {
+      bool success = await _apiService.deleteLokasi(id);
+      if (success) {
+        _lokasiList.removeWhere((item) => item.id == id);
+        notifyListeners();
+      }
+      return success;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  // --- NOTIFIKASI ---
+
+  Future<void> loadNotifikasi() async {
+    try {
+      final List<dynamic> n = await _apiService.getNotifikasi();
+      _notifList = n.map((e) => Notifikasi.fromJson(e)).toList();
+      notifyListeners();
+    } catch (e) {
+      print("Error loading notif: $e");
     }
   }
 }

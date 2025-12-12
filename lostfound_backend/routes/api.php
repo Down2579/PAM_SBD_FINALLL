@@ -28,6 +28,10 @@ Route::middleware('auth:sanctum')->group(function(){
     Route::post('pengambilan', [PengambilanController::class,'store']);
     Route::patch('pengambilan/{pengambilan}/status', [PengambilanController::class,'updateStatus']);
 
+    Route::get('klaim-penemuan', [KlaimPenemuanController::class, 'index']);
+    Route::post('klaim-penemuan', [KlaimPenemuanController::class, 'store']);
+    Route::patch('klaim-penemuan/{id}/status', [KlaimPenemuanController::class, 'updateStatus']);
+
     Route::post('bukti', [BuktiPengambilanController::class,'store']);
 
     Route::get('notifikasi', [NotifikasiController::class,'index']);

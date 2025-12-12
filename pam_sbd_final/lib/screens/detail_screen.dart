@@ -1,29 +1,39 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import '../models.dart';
-import '../providers.dart';
-import '../api_service.dart';
 import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
+
+import '../models.dart';
+import '../providers.dart'; // Sesuaikan path
 
 class DetailScreen extends StatefulWidget {
-  final Item item;
-  const DetailScreen({Key? key, required this.item}) : super(key: key);
+  final Barang item; // Menerima object Barang dari list sebelumnya (untuk preview awal)
+  const DetailScreen({super.key, required this.item});
 
   @override
   State<DetailScreen> createState() => _DetailScreenState();
 }
 
 class _DetailScreenState extends State<DetailScreen> {
-  final TextEditingController _pesanController = TextEditingController();
-  bool _isLoadingClaim = false;
+  final _pesanController = TextEditingController();
 
+  // Colors Palette
   final Color darkNavy = const Color(0xFF2B4263);
   final Color accentBlue = const Color(0xFF4A90E2);
   final Color textDark = const Color(0xFF1F2937);
-  final Color textSecondary = const Color(0xFF6B7280);
-  final Color bgGrey = const Color(0xFFF5F7FA);
+  final Color textGrey = const Color(0xFF9CA3AF);
+  final Color bgPage = const Color(0xFFF5F7FA);
   final Color successGreen = const Color(0xFF10B981);
   final Color errorRed = const Color(0xFFEF4444);
+  final Color warningOrange = const Color(0xFFF59E0B);
+
+  @override
+  void initState() {
+    super.initState();
+    // Fetch detail lengkap dari server (untuk dapat data User Pelapor yg up-to-date)
+    Future.microtask(() => 
+      Provider.of<BarangProvider>(context, listen: false).getDetail(widget.item.id)
+    );
+  }
 
   @override
   void dispose() {
@@ -33,243 +43,224 @@ class _DetailScreenState extends State<DetailScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final user = Provider.of<AuthProvider>(context, listen: false).user;
-    final bool isMyItem = user != null && user.id == widget.item.idPelapor;
-    final bool canClaim = !isMyItem && widget.item.status == 'open' && widget.item.tipeLaporan == 'hilang';
+    // Ambil user yang sedang login
+    final currentUser = Provider.of<AuthProvider>(context).currentUser;
+    
+    // Ambil state detail barang dari provider
+    // Jika sedang loading/null, pakai data widget.item sebagai placeholder
+    final barangProvider = Provider.of<BarangProvider>(context);
+    final itemDetail = barangProvider.selectedBarang ?? widget.item;
+
+    // Logic Cek Pemilik
+    final bool isMyItem = currentUser != null && itemDetail.pelapor?.id == currentUser.id;
+    // Logic Bisa Klaim: Barang 'hilang' (bukan ditemukan), status 'open', dan bukan punya sendiri
+    final bool canClaim = !isMyItem 
+        && itemDetail.status == 'open' 
+        && itemDetail.tipeLaporan == 'hilang'; 
+        // Logic tambahan: Jika tipe 'ditemukan', user juga bisa klaim "Itu barang saya"
+        // Sesuaikan dengan logic bisnis Anda. Di sini saya asumsikan dua arah bisa diklaim.
+    
+    // Logic umum: Orang lain bisa mengklaim barang yang statusnya masih open
+    final bool showClaimForm = !isMyItem && itemDetail.status == 'open';
 
     return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 1,
-        leading: IconButton(
-          icon: Icon(Icons.arrow_back, color: textDark),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: Text(
-          "Detail Item",
-          style: TextStyle(color: textDark, fontWeight: FontWeight.bold),
-        ),
-        centerTitle: true,
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Image Placeholder
-            Container(
-              height: 240,
-              width: double.infinity,
-              decoration: BoxDecoration(
-                color: bgGrey,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: Colors.grey[300]!),
+      backgroundColor: bgPage,
+      body: CustomScrollView(
+        slivers: [
+          // ================= SLIVER APP BAR (IMAGE) =================
+          SliverAppBar(
+            expandedHeight: 300,
+            pinned: true,
+            backgroundColor: darkNavy,
+            leading: IconButton(
+              icon: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(color: Colors.white.withOpacity(0.3), shape: BoxShape.circle),
+                child: const Icon(Icons.arrow_back, color: Colors.white),
               ),
-              child: Icon(Icons.image_outlined, size: 100, color: Colors.grey[400]),
+              onPressed: () => Navigator.pop(context),
             ),
-            const SizedBox(height: 24),
-
-            // Header Info
-            Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        widget.item.namaBarang,
-                        style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: textDark),
-                      ),
-                      const SizedBox(height: 8),
-                      Row(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                            decoration: BoxDecoration(
-                              color: widget.item.tipeLaporan.toLowerCase() == 'hilang'
-                                  ? errorRed.withOpacity(0.2)
-                                  : successGreen.withOpacity(0.2),
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                            child: Text(
-                              widget.item.tipeLaporan.toLowerCase() == 'hilang' ? 'LOST' : 'FOUND',
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.bold,
-                                color: widget.item.tipeLaporan.toLowerCase() == 'hilang' ? errorRed : successGreen,
-                              ),
-                            ),
+            flexibleSpace: FlexibleSpaceBar(
+              background: Stack(
+                fit: StackFit.expand,
+                children: [
+                  itemDetail.gambarUrl != null
+                      ? Image.network(
+                          itemDetail.gambarUrl!, // Pastikan model getter URL lengkap
+                          fit: BoxFit.cover,
+                          errorBuilder: (_,__,___) => Container(color: Colors.grey),
+                        )
+                      : Container(
+                          color: darkNavy,
+                          child: Icon(
+                            itemDetail.tipeLaporan == 'hilang' ? Icons.search_off : Icons.inventory_2,
+                            size: 80, color: Colors.white.withOpacity(0.5)
                           ),
-                          const SizedBox(width: 8),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                            decoration: BoxDecoration(
-                              color: widget.item.status == 'open' ? successGreen.withOpacity(0.2) : Colors.orange.withOpacity(0.2),
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                            child: Text(
-                              widget.item.status == 'open' ? 'OPEN' : widget.item.status.toUpperCase(),
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.bold,
-                                color: widget.item.status == 'open' ? successGreen : Colors.orange,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-
-            const SizedBox(height: 28),
-
-            // Detail Section
-            Text(
-              "Details",
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: textDark),
-            ),
-            const SizedBox(height: 16),
-
-            _buildDetailRow(Icons.widgets_outlined, "Category", widget.item.kategori ?? "-"),
-            _buildDetailRow(Icons.location_on_outlined, "Location", widget.item.lokasi ?? "-"),
-            _buildDetailRow(
-              Icons.calendar_today_outlined,
-              "Date",
-              DateFormat('dd MMM yyyy').format(widget.item.tanggalKejadian),
-            ),
-            _buildDetailRow(Icons.person_outline, "Reported by", widget.item.pelaporNama ?? "-"),
-
-            const SizedBox(height: 28),
-
-            // Description
-            Text(
-              "Description",
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: textDark),
-            ),
-            const SizedBox(height: 12),
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: bgGrey,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.grey[300]!, width: 1.5),
-              ),
-              child: Text(
-                widget.item.deskripsi ?? "No description",
-                style: TextStyle(fontSize: 14, color: textDark, height: 1.6),
-              ),
-            ),
-
-            const SizedBox(height: 28),
-
-            // Claim Section
-            if (isMyItem)
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: accentBlue.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: accentBlue, width: 1.5),
-                ),
-                child: Row(
-                  children: [
-                    Icon(Icons.info_outline, color: accentBlue),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Text(
-                        "This is your report",
-                        style: TextStyle(color: accentBlue, fontWeight: FontWeight.w600),
+                        ),
+                  // Gradient Overlay bawah agar text terbaca
+                  Positioned(
+                    bottom: 0, left: 0, right: 0,
+                    child: Container(
+                      height: 100,
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [Colors.transparent, Colors.black.withOpacity(0.7)],
+                        ),
                       ),
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
+            ),
+          ),
 
-            if (canClaim) ...[
-              const SizedBox(height: 28),
-              Text(
-                "Claim This Item",
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: textDark),
+          // ================= CONTENT BODY =================
+          SliverToBoxAdapter(
+            child: Container(
+              decoration: BoxDecoration(
+                color: bgPage,
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
               ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: _pesanController,
-                maxLines: 3,
-                decoration: InputDecoration(
-                  hintText: "Describe identifying features (color, marks, etc.)",
-                  hintStyle: TextStyle(color: textSecondary),
-                  filled: true,
-                  fillColor: Colors.white,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: Colors.grey[300]!, width: 1.5),
+              transform: Matrix4.translationValues(0, -20, 0), // Overlap sedikit ke atas
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // 1. Title & Status
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: Text(
+                          itemDetail.namaBarang,
+                          style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: textDark),
+                        ),
+                      ),
+                      _buildStatusBadge(itemDetail),
+                    ],
                   ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: Colors.grey[300]!, width: 1.5),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: darkNavy, width: 2),
-                  ),
-                  contentPadding: const EdgeInsets.all(14),
-                ),
-              ),
-              const SizedBox(height: 16),
-              SizedBox(
-                width: double.infinity,
-                height: 50,
-                child: ElevatedButton.icon(
-                  onPressed: _isLoadingClaim ? null : _handleClaim,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: successGreen,
-                    disabledBackgroundColor: Colors.grey,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    elevation: 4,
-                  ),
-                  icon: _isLoadingClaim
-                      ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                      : const Icon(Icons.check_circle, color: Colors.white),
-                  label: Text(
-                    _isLoadingClaim ? "Submitting..." : "Submit Claim",
-                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
-                  ),
-                ),
-              ),
-            ],
+                  
+                  const SizedBox(height: 20),
 
-            const SizedBox(height: 24),
-          ],
-        ),
+                  // 2. Info Cards (Grid 2x2)
+                  GridView.count(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    crossAxisCount: 2,
+                    childAspectRatio: 2.5,
+                    crossAxisSpacing: 12,
+                    mainAxisSpacing: 12,
+                    children: [
+                      _buildInfoCard(Icons.category_outlined, "Category", itemDetail.kategori?.namaKategori ?? "-"),
+                      _buildInfoCard(Icons.location_on_outlined, "Location", itemDetail.lokasi?.namaLokasi ?? "-"),
+                      _buildInfoCard(Icons.calendar_today_outlined, "Date", 
+                         itemDetail.tanggalKejadian != null 
+                         ? DateFormat('dd MMM yyyy').format(itemDetail.tanggalKejadian!) 
+                         : "-"
+                      ),
+                      _buildInfoCard(Icons.person_outline_rounded, "Posted By", itemDetail.pelapor?.namaLengkap ?? "Anonymous"),
+                    ],
+                  ),
+
+                  const SizedBox(height: 24),
+
+                  // 3. Description
+                  Text("Description", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: textDark)),
+                  const SizedBox(height: 12),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 10)]
+                    ),
+                    child: Text(
+                      itemDetail.deskripsi,
+                      style: TextStyle(fontSize: 14, color: textDark, height: 1.5),
+                    ),
+                  ),
+
+                  const SizedBox(height: 30),
+
+                  // 4. ACTION SECTION (Claim / Owner View)
+                  if (barangProvider.isLoading)
+                     const Center(child: CircularProgressIndicator())
+                  else if (isMyItem)
+                    _buildOwnerView()
+                  else if (showClaimForm)
+                    _buildClaimForm(context, itemDetail.id)
+                  else
+                    _buildClosedView(itemDetail.status),
+
+                  const SizedBox(height: 40),
+                ],
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
 
-  Widget _buildDetailRow(IconData icon, String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 16),
+  // ================= SUB-WIDGETS =================
+
+  Widget _buildStatusBadge(Barang item) {
+    bool isLost = item.tipeLaporan == 'hilang';
+    Color color = isLost ? errorRed : successGreen;
+    if (item.status != 'open') color = warningOrange;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: color.withOpacity(0.3)),
+      ),
+      child: Column(
+        children: [
+          Text(
+            isLost ? "LOST" : "FOUND",
+            style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 12),
+          ),
+          Text(
+            item.status.toUpperCase(),
+            style: TextStyle(color: color, fontSize: 10),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInfoCard(IconData icon, String label, String value) {
+    return Container(
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey.withOpacity(0.1)),
+      ),
       child: Row(
         children: [
-          Icon(icon, size: 20, color: darkNavy),
-          const SizedBox(width: 12),
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(color: bgPage, shape: BoxShape.circle),
+            child: Icon(icon, size: 18, color: darkNavy),
+          ),
+          const SizedBox(width: 10),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
+                Text(label, style: TextStyle(fontSize: 10, color: textGrey)),
                 Text(
-                  label,
-                  style: TextStyle(fontSize: 12, color: textSecondary, fontWeight: FontWeight.w500),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  value,
-                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: textDark),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
+                  value, 
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: textDark),
+                  maxLines: 1, overflow: TextOverflow.ellipsis,
                 ),
               ],
             ),
@@ -279,50 +270,125 @@ class _DetailScreenState extends State<DetailScreen> {
     );
   }
 
-  Future<void> _handleClaim() async {
-    if (_pesanController.text.trim().isEmpty) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text("Please describe the item"),
-          backgroundColor: errorRed,
+  Widget _buildOwnerView() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: accentBlue.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: accentBlue.withOpacity(0.3)),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.verified_user_rounded, color: accentBlue, size: 30),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text("Your Report", style: TextStyle(fontWeight: FontWeight.bold, color: accentBlue, fontSize: 16)),
+                const SizedBox(height: 4),
+                Text("This is the item you reported.", style: TextStyle(color: textDark, fontSize: 13)),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildClosedView(String status) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.grey[200],
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        children: [
+          Icon(Icons.lock_outline_rounded, color: textGrey, size: 40),
+          const SizedBox(height: 8),
+          Text(
+            "This item is ${status == 'selesai' ? 'Closed' : 'Under Process'}",
+            style: TextStyle(color: textGrey, fontWeight: FontWeight.bold),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildClaimForm(BuildContext context, int barangId) {
+    final klaimProvider = Provider.of<KlaimProvider>(context);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text("Claim This Item", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: textDark)),
+        const SizedBox(height: 8),
+        Text("If this item belongs to you (or you found it), please describe it to verify.", style: TextStyle(color: textGrey, fontSize: 13)),
+        const SizedBox(height: 16),
+        
+        TextField(
+          controller: _pesanController,
+          maxLines: 3,
+          decoration: InputDecoration(
+            hintText: "Describe unique features (scratches, stickers, contents inside)...",
+            hintStyle: TextStyle(color: Colors.grey[400], fontSize: 13),
+            filled: true,
+            fillColor: Colors.white,
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+            contentPadding: const EdgeInsets.all(16),
+          ),
         ),
-      );
+        
+        const SizedBox(height: 20),
+
+        SizedBox(
+          width: double.infinity,
+          height: 50,
+          child: ElevatedButton(
+            onPressed: klaimProvider.isLoading ? null : () => _handleClaim(context, barangId),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: successGreen,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              elevation: 4,
+            ),
+            child: klaimProvider.isLoading
+              ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+              : const Text("Submit Claim Request", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Future<void> _handleClaim(BuildContext context, int barangId) async {
+    if (_pesanController.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Please enter a description")));
       return;
     }
 
-    setState(() => _isLoadingClaim = true);
+    // Panggil Provider Klaim
+    final success = await Provider.of<KlaimProvider>(context, listen: false).ajukanKlaim(
+      {
+        'id_barang': barangId.toString(),
+        'deskripsi_klaim': _pesanController.text,
+      }, 
+      null // Foto identitas opsional, bisa ditambahkan UI nya jika perlu
+    );
 
-    try {
-      String res = await ApiService().claimItem(widget.item.id, _pesanController.text);
-      if (!mounted) return;
+    if (!mounted) return;
 
-      if (res.contains("Berhasil") || res.contains("success")) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text("Claim submitted successfully!"),
-            backgroundColor: successGreen,
-          ),
-        );
-        Navigator.pop(context);
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(res),
-            backgroundColor: errorRed,
-          ),
-        );
-      }
-    } catch (e) {
-      if (!mounted) return;
+    if (success) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text("Error: $e"),
-          backgroundColor: errorRed,
-        ),
+        SnackBar(content: Text("Claim submitted! Waiting for owner verification."), backgroundColor: successGreen)
       );
-    } finally {
-      if (mounted) setState(() => _isLoadingClaim = false);
+      Navigator.pop(context);
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Failed to submit claim. You might have already claimed this."), backgroundColor: errorRed)
+      );
     }
   }
 }

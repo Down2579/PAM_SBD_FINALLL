@@ -1,283 +1,283 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import '../api_service.dart';
+import 'package:provider/provider.dart';
+
 import '../models.dart';
+import '../providers.dart'; // Sesuaikan path
 import 'detail_screen.dart';
-import 'add_item_screen.dart';
-import 'notification_screen.dart'; // <--- DIPERBAIKI: Import NotificationScreen
-import 'help_center_screen.dart';
-import '../widgets/notification_modal.dart';
+import 'add_item_screen.dart'; // Jika ada FAB di dalam screen ini
 
 class MyTaskScreen extends StatefulWidget {
+  const MyTaskScreen({super.key});
+
   @override
-  _MyTaskScreenState createState() => _MyTaskScreenState();
+  State<MyTaskScreen> createState() => _MyTaskScreenState();
 }
 
 class _MyTaskScreenState extends State<MyTaskScreen> {
-  final ApiService api = ApiService();
-  late Future<List<Item>> _itemsFuture;
-
-  // Palet Warna
+  // Colors Palette
   final Color darkNavy = const Color(0xFF2B4263);
   final Color accentBlue = const Color(0xFF4A90E2);
   final Color textDark = const Color(0xFF1F2937);
-  final Color textSecondary = const Color(0xFF6B7280);
-  final Color bgGrey = const Color(0xFFF5F7FA);
-  final Color errorRed = const Color(0xFFEF4444);
+  final Color textGrey = const Color(0xFF9CA3AF);
+  final Color bgPage = const Color(0xFFF5F7FA);
   final Color successGreen = const Color(0xFF10B981);
+  final Color errorRed = const Color(0xFFEF4444);
+  final Color warningOrange = const Color(0xFFF59E0B);
 
   @override
   void initState() {
     super.initState();
-    _itemsFuture = api.getMyItems();
-  }
-
-  Future<void> _refreshItems() async {
-    setState(() {
-      _itemsFuture = api.getMyItems();
-    });
+    // Fetch data ulang saat masuk tab ini untuk memastikan data terbaru
+    Future.microtask(() => 
+      Provider.of<BarangProvider>(context, listen: false).fetchBarang(refresh: true)
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    // Kode ini menggunakan struktur lama Anda, tanpa BottomNavBar,
-    // karena Anda memintanya berdasarkan kode yang Anda berikan.
-    return Material(
-      color: Colors.white,
-      child: Stack(
-        children: [
-          Column(
+    // Ambil user saat ini untuk filter
+    final currentUser = Provider.of<AuthProvider>(context).currentUser;
+    
+    return Scaffold(
+      backgroundColor: bgPage,
+      // AppBar custom agar konsisten dengan desain Home
+      appBar: AppBar(
+        backgroundColor: bgPage,
+        elevation: 0,
+        automaticallyImplyLeading: false, // Matikan back button default
+        title: Padding(
+          padding: const EdgeInsets.only(left: 8.0),
+          child: Row(
             children: [
-              Padding(
-                padding: EdgeInsets.only(
-                  top: MediaQuery.of(context).padding.top + 20,
-                  left: 24,
-                  right: 24,
-                  bottom: 20,
-                ),
-                child: Column(
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        IconButton(
-                          icon: Icon(Icons.menu, size: 28, color: textDark),
-                          onPressed: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(builder: (context) => HelpCenterScreen()),
-                            );
-                          },
-                        ),
-                        IconButton(
-                          icon: Icon(Icons.notifications_none_outlined, size: 28, color: textDark),
-                          onPressed: () async {
-                            await showNotificationsModal(context);
-                          },
-                        ),
-                      ],
-                    ),
-                    SizedBox(height: 20),
-                    Row(
-                      children: [
-                        SizedBox(
-                          height: 60,
-                          width: 60,
-                          child: Image.asset(
-                            'assets/images/logo.png',
-                            errorBuilder: (context, error, stackTrace) {
-                              return Icon(Icons.inventory_2_outlined, size: 48, color: darkNavy);
-                            },
-                          ),
-                        ),
-                        SizedBox(width: 16),
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text("My Task", style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold, color: textDark)),
-                            Text("Found yours !", style: TextStyle(fontSize: 14, color: darkNavy, fontWeight: FontWeight.w600)),
-                          ],
-                        )
-                      ],
-                    ),
-                  ],
-                ),
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12)),
+                child: Icon(Icons.inventory_2_rounded, color: darkNavy, size: 28),
               ),
-              Expanded(
-                child: FutureBuilder<List<Item>>(
-                  future: api.getMyItems(), 
-                  builder: (context, snapshot) {
-                    if (snapshot.connectionState == ConnectionState.waiting) {
-                      return Center(child: CircularProgressIndicator(color: darkNavy));
-                    }
-                    if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                      return Center(
-                        child: Text("You don’t have any task", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: textDark)),
-                      );
-                    }
-                    List<Item> items = snapshot.data!;
-                    return ListView.builder(
-                      padding: EdgeInsets.symmetric(horizontal: 24, vertical: 10),
-                      itemCount: items.length,
-                      itemBuilder: (context, index) {
-                        return _buildTaskItem(items[index]);
-                      },
-                    );
-                  },
-                ),
-              ),
+              const SizedBox(width: 16),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text("My Tasks", style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: textDark)),
+                  Text("Your reported items", style: TextStyle(fontSize: 12, color: textGrey, fontWeight: FontWeight.w500)),
+                ],
+              )
             ],
           ),
-          Positioned(
-            bottom: 20,
-            right: 20,
-            child: FloatingActionButton(
-              onPressed: () async {
-                await Navigator.push(
-                  context, 
-                  MaterialPageRoute(builder: (context) => AddItemScreen())
-                );
-                setState(() {}); 
-              },
-              backgroundColor: darkNavy,
-              elevation: 5,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16), 
-              ),
-              child: Icon(Icons.add, size: 35, color: Colors.white),
-            ),
+        ),
+        actions: [
+          // Tombol Notifikasi (Opsional jika ingin ada di setiap tab)
+          IconButton(
+            icon: Icon(Icons.notifications_none_rounded, color: textDark, size: 28),
+            onPressed: () {
+               // Logic buka notifikasi / modal
+            },
           ),
+          const SizedBox(width: 16),
+        ],
+      ),
+      
+      body: Consumer<BarangProvider>(
+        builder: (context, provider, child) {
+          if (provider.isLoading && provider.listBarang.isEmpty) {
+            return Center(child: CircularProgressIndicator(color: darkNavy));
+          }
+
+          // Filter Manual: Hanya barang milik user yang login
+          // (Idealnya backend punya endpoint /my-items, tapi kita filter client side dulu)
+          final myItems = provider.listBarang.where((item) {
+             return item.pelapor?.id == currentUser?.id;
+          }).toList();
+
+          if (myItems.isEmpty) {
+            return _buildEmptyState();
+          }
+
+          return RefreshIndicator(
+            onRefresh: () => provider.fetchBarang(refresh: true),
+            color: darkNavy,
+            child: ListView.builder(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+              itemCount: myItems.length,
+              itemBuilder: (context, index) {
+                return _buildTaskItem(myItems[index]);
+              },
+            ),
+          );
+        },
+      ),
+      
+      // Floating Action Button khusus untuk halaman ini (Opsional, karena di Home sudah ada)
+      // Jika di HomeScreen sudah ada logic FAB, ini bisa dihapus.
+      // Namun untuk independensi, saya biarkan.
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {
+           Navigator.push(context, MaterialPageRoute(builder: (_) => const AddItemScreen()));
+        },
+        backgroundColor: darkNavy,
+        child: const Icon(Icons.add, color: Colors.white),
+      ),
+    );
+  }
+
+  Widget _buildEmptyState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(color: Colors.white, shape: BoxShape.circle),
+            child: Icon(Icons.assignment_outlined, size: 60, color: Colors.grey[300]),
+          ),
+          const SizedBox(height: 20),
+          Text("You don't have any tasks", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: textDark)),
+          const SizedBox(height: 8),
+          Text("Start by reporting a lost or found item.", style: TextStyle(color: textGrey)),
         ],
       ),
     );
   }
 
-  Widget _buildTaskItem(Item item) {
-    bool isLost = item.tipeLaporan.toLowerCase() == "hilang";
-    const Color borderGrey = Color(0xFFE5E7EB);
+  Widget _buildTaskItem(Barang item) {
+    bool isLost = item.tipeLaporan == 'hilang';
+    Color statusColor = isLost ? warningOrange : successGreen;
+    String statusText = isLost ? "LOST" : "FOUND";
+
+    // Cek Status Proses
+    Color badgeColor = Colors.grey;
+    if(item.status == 'open') badgeColor = successGreen;
+    if(item.status == 'proses_klaim') badgeColor = warningOrange;
+    if(item.status == 'selesai') badgeColor = darkNavy;
 
     return GestureDetector(
       onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (_) => DetailScreen(item: item)),
-        );
+        Navigator.push(context, MaterialPageRoute(builder: (_) => DetailScreen(item: item)));
       },
       child: Container(
-        margin: EdgeInsets.only(bottom: 12),
+        margin: const EdgeInsets.only(bottom: 16),
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: borderGrey, width: 1.5),
+          borderRadius: BorderRadius.circular(20),
           boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.06),
-              blurRadius: 10,
-              offset: const Offset(0, 3),
-            )
-          ],
+            BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 15, offset: const Offset(0, 4))
+          ]
         ),
-        child: Row(
-          children: [
-            Container(
-              width: 80,
-              height: 100,
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [
-                    isLost ? errorRed : successGreen,
-                    (isLost ? errorRed : successGreen).withOpacity(0.7),
-                  ],
-                ),
-                borderRadius: const BorderRadius.only(
-                  topLeft: Radius.circular(16),
-                  bottomLeft: Radius.circular(16),
+        child: IntrinsicHeight(
+          child: Row(
+            children: [
+              // Left Side Indicator Strip
+              Container(
+                width: 6,
+                decoration: BoxDecoration(
+                  color: isLost ? errorRed : successGreen,
+                  borderRadius: const BorderRadius.only(topLeft: Radius.circular(20), bottomLeft: Radius.circular(20)),
                 ),
               ),
-              child: Icon(
-                isLost ? Icons.search_off_outlined : Icons.inventory_2_outlined,
-                color: Colors.white,
-                size: 38,
+              
+              // Image Thumbnail
+              Container(
+                width: 80,
+                margin: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
+                decoration: BoxDecoration(
+                  color: bgPage,
+                  borderRadius: BorderRadius.circular(16),
+                  image: item.gambarUrl != null 
+                      ? DecorationImage(image: NetworkImage(item.gambarUrl!), fit: BoxFit.cover)
+                      : null
+                ),
+                child: item.gambarUrl == null 
+                    ? Icon(isLost ? Icons.search_off : Icons.inventory_2, color: Colors.grey[400]) 
+                    : null,
               ),
-            ),
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.all(12),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: isLost
-                                ? errorRed.withOpacity(0.15)
-                                : successGreen.withOpacity(0.15),
-                            borderRadius: BorderRadius.circular(6),
+
+              // Content
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      // Status Badges Row
+                      Row(
+                        children: [
+                          _buildMiniBadge(statusText, isLost ? errorRed : successGreen),
+                          const SizedBox(width: 8),
+                          _buildMiniBadge(item.status.toUpperCase().replaceAll('_', ' '), badgeColor, isOutline: true),
+                        ],
+                      ),
+                      
+                      const SizedBox(height: 8),
+                      
+                      Text(
+                        item.namaBarang,
+                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: textDark),
+                        maxLines: 1, overflow: TextOverflow.ellipsis,
+                      ),
+                      
+                      const SizedBox(height: 6),
+                      
+                      Row(
+                        children: [
+                          Icon(Icons.calendar_today_rounded, size: 12, color: textGrey),
+                          const SizedBox(width: 4),
+                          Text(
+                            item.tanggalKejadian != null 
+                              ? DateFormat('dd MMM yyyy').format(item.tanggalKejadian!) 
+                              : "-",
+                            style: TextStyle(fontSize: 12, color: textGrey),
                           ),
-                          child: Text(
-                            isLost ? "Lost" : "Found",
-                            style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.bold,
-                              color: isLost ? errorRed : successGreen,
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Row(
+                              children: [
+                                Icon(Icons.location_on_rounded, size: 12, color: textGrey),
+                                const SizedBox(width: 4),
+                                Expanded(
+                                  child: Text(
+                                    item.lokasi?.namaLokasi ?? "-",
+                                    style: TextStyle(fontSize: 12, color: textGrey),
+                                    maxLines: 1, overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ],
                             ),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            item.namaBarang,
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 14,
-                              color: textDark,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 6),
-                    Row(
-                      children: [
-                        Icon(Icons.location_on_outlined, size: 14, color: textSecondary),
-                        const SizedBox(width: 4),
-                        Expanded(
-                          child: Text(
-                            item.lokasi ?? "-",
-                            style: TextStyle(fontSize: 12, color: textSecondary),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 4),
-                    Row(
-                      children: [
-                        Icon(Icons.calendar_today_outlined, size: 14, color: textSecondary),
-                        const SizedBox(width: 4),
-                        Text(
-                          item.waktu,
-                          style: TextStyle(fontSize: 12, color: textSecondary),
-                        ),
-                      ],
-                    ),
-                  ],
+                          )
+                        ],
+                      )
+                    ],
+                  ),
                 ),
               ),
-            ),
-            Padding(
-              padding: const EdgeInsets.only(right: 12),
-              child: Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey[400]),
-            ),
-          ],
+
+              // Arrow Right
+              Padding(
+                padding: const EdgeInsets.only(right: 16),
+                child: Icon(Icons.arrow_forward_ios_rounded, size: 14, color: Colors.grey[300]),
+              )
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMiniBadge(String text, Color color, {bool isOutline = false}) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: isOutline ? Colors.transparent : color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: isOutline ? color : Colors.transparent),
+      ),
+      child: Text(
+        text,
+        style: TextStyle(
+          fontSize: 10, 
+          fontWeight: FontWeight.bold, 
+          color: color
         ),
       ),
     );
