@@ -143,15 +143,33 @@ class Barang {
       tipeLaporan: json['tipe_laporan'] ?? 'hilang',
       status: json['status'] ?? 'open',
       statusVerifikasi: json['status_verifikasi'] ?? 'belum_diverifikasi',
-      tanggalKejadian: json['tanggal_kejadian'] != null 
-          ? DateTime.parse(json['tanggal_kejadian']) 
-          : null,
-      createdAt: DateTime.parse(json['created_at']), // Laravel timestampsTz standard ISO8601
       
-      // Mapping Relasi (Nested Object)
-      pelapor: json['pelapor'] != null ? User.fromJson(json['pelapor']) : null,
-      kategori: json['kategori'] != null ? Kategori.fromJson(json['kategori']) : null,
-      lokasi: json['lokasi'] != null ? Lokasi.fromJson(json['lokasi']) : null,
+      // Handle Tanggal (Cegah crash format)
+      tanggalKejadian: json['tanggal_kejadian'] != null 
+          ? DateTime.tryParse(json['tanggal_kejadian'].toString()) 
+          : null,
+      
+      createdAt: DateTime.tryParse(json['created_at'].toString()) ?? DateTime.now(),
+      
+      // 1. Handle Pelapor
+      pelapor: json['pelapor'] is Map<String, dynamic> 
+          ? User.fromJson(json['pelapor']) 
+          : null,
+
+      // 2. Handle Kategori (Bisa String "Elektronik" atau Map {"id":1...})
+      kategori: json['kategori'] is Map<String, dynamic>
+          ? Kategori.fromJson(json['kategori'])
+          : (json['kategori'] is String 
+              ? Kategori(id: 0, namaKategori: json['kategori']) // Buat object dummy dari String
+              : null),
+
+      // 3. Handle Lokasi (Bisa String "Gedung A" atau Map {"id":1...})
+      lokasi: json['lokasi'] is Map<String, dynamic>
+          ? Lokasi.fromJson(json['lokasi'])
+          : (json['lokasi'] is String 
+              ? Lokasi(id: 0, namaLokasi: json['lokasi']) // Buat object dummy dari String
+              : null),
+
       fotoLain: fotoList,
     );
   }

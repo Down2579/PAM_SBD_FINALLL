@@ -126,7 +126,7 @@ class BarangProvider with ChangeNotifier {
     }
 
     if (!_hasMore && !refresh) return;
-
+    if (_isLoading) return;
     _isLoading = true;
     if (refresh) notifyListeners(); 
 
@@ -137,12 +137,21 @@ class BarangProvider with ChangeNotifier {
         status: status,
         search: search
       );
+      print("Provider menerima data: ${response['data']}");
 
       final List<dynamic> data = response['data'];
       final Map<String, dynamic>? meta = response['meta'];
 
       List<Barang> newItems = data.map((e) => Barang.fromJson(e)).toList();
 
+      for (var item in data) {
+        try {
+          newItems.add(Barang.fromJson(item));
+        } catch (e) {
+          print("ERROR PARSING ITEM ID ${item['id']}: $e");
+          print("DATA ITEM YANG ERROR: $item");
+        }
+      }
       if (refresh) {
         _listBarang = newItems;
       } else {
@@ -157,12 +166,20 @@ class BarangProvider with ChangeNotifier {
           _currentPage++;
         }
       } else {
+        if (newItems.isEmpty && data.isNotEmpty) {
+           // Jika data dari API ada, tapi newItems kosong, berarti semua gagal diparsing
+           print("WARNING: Semua data gagal diparsing!");
+        }
         if (newItems.isEmpty) _hasMore = false;
       }
 
       _isLoading = false;
       notifyListeners();
-    } catch (e) {
+    } catch (e, stacktrace) {
+      // --- CETAK ERROR AGAR MUNCUL DI TERMINAL ---
+      print("ERROR FATAL FETCH BARANG: $e");
+      print(stacktrace);
+      // -------------------------------------------
       _isLoading = false;
       _errorMessage = e.toString();
       notifyListeners();
@@ -199,6 +216,20 @@ class BarangProvider with ChangeNotifier {
       _isLoading = false;
       _errorMessage = e.toString();
       notifyListeners();
+      return false;
+    }
+  }
+    Future<bool> deleteBarang(int id) async {
+    try {
+      bool success = await _apiService.deleteBarang(id);
+      if (success) {
+        // Hapus dari list lokal agar UI update instan
+        _listBarang.removeWhere((item) => item.id == id);
+        notifyListeners();
+      }
+      return success;
+    } catch (e) {
+      print("Error delete barang: $e");
       return false;
     }
   }

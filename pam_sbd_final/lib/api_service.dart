@@ -95,6 +95,8 @@ class ApiService {
   // BARANG (Lost & Found Items)
   // ===========================================================================
 
+// Di file api_service.dart
+
   Future<Map<String, dynamic>> getBarang({
     int page = 1,
     String? type, 
@@ -108,7 +110,17 @@ class ApiService {
 
     final url = Uri.parse('$baseUrl/barang$query');
     final headers = await _getHeaders();
+    
+    // --- DEBUGGING LOG ---
+    print("DEBUG GET BARANG URL: $url");
+    // ---------------------
+
     final response = await http.get(url, headers: headers);
+
+    // --- DEBUGGING LOG ---
+    print("DEBUG STATUS BARANG: ${response.statusCode}");
+    print("DEBUG BODY BARANG: ${response.body}");
+    // ---------------------
 
     if (response.statusCode == 200) {
       return jsonDecode(response.body);
