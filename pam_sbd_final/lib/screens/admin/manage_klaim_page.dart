@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:intl/intl.dart'; // Tambahkan package intl di pubspec.yaml
+import 'package:intl/intl.dart'; // Pastikan package intl sudah ada di pubspec.yaml
 import '../../providers.dart';
 import '../../models.dart';
-import 'form_bukti_pengembalian_page.dart'; // Import halaman bukti
+import 'form_bukti_pengembalian_page.dart'; // Pastikan file ini ada di folder yang sama
 
 class ManageKlaimPage extends StatefulWidget {
   const ManageKlaimPage({super.key});
@@ -18,8 +18,8 @@ class _ManageKlaimPageState extends State<ManageKlaimPage> {
   final Color successGreen = const Color(0xFF10B981);
   final Color errorRed = const Color(0xFFEF4444);
   
-  // Ganti dengan IP komputer/server Anda (sama seperti di ApiService)
-  final String baseUrlImage = 'http://10.0.2.2:8000/storage/'; 
+  // IP Emulator Android Default. Sesuaikan jika pakai device asli.
+  final String baseUrlImage = 'http://10.0.2.2:8000'; 
 
   @override
   void initState() {
@@ -34,7 +34,7 @@ class _ManageKlaimPageState extends State<ManageKlaimPage> {
     return Scaffold(
       backgroundColor: bgPage,
       appBar: AppBar(
-        title: const Text("Validasi Klaim", style: TextStyle(color: Colors.white)),
+        title: const Text("Validasi Klaim", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
         backgroundColor: darkNavy,
         elevation: 0,
       ),
@@ -76,9 +76,9 @@ class _ManageKlaimPageState extends State<ManageKlaimPage> {
   Widget _buildFullKlaimCard(KlaimPenemuan klaim, KlaimProvider provider) {
     final barang = klaim.barang;
     final penemu = klaim.penemu;
-    final pelapor = barang?.pelapor; // Asumsi ada relasi pelapor di model Barang
+    final pelapor = barang?.pelapor; 
 
-    // Logic status untuk mendisable tombol jika sudah selesai
+    // Logic status: tombol hanya aktif jika status masih menunggu
     bool isActionable = klaim.statusKlaim == 'menunggu_verifikasi_pemilik' || 
                         klaim.statusKlaim == 'menunggu_verifikasi_admin';
 
@@ -106,13 +106,12 @@ class _ManageKlaimPageState extends State<ManageKlaimPage> {
             ),
             const Divider(),
 
-            // BAGIAN 1: DATA BARANG (Yang Hilang)
+            // BAGIAN 1: DATA BARANG
             const Text("DATA BARANG", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.grey)),
             const SizedBox(height: 8),
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // FOTO BARANG ASLI
                 _buildImageThumb(barang?.gambarUrl),
                 const SizedBox(width: 12),
                 Expanded(
@@ -133,7 +132,7 @@ class _ManageKlaimPageState extends State<ManageKlaimPage> {
             
             const SizedBox(height: 16),
 
-            // BAGIAN 2: DATA KLAIM (Penemuan)
+            // BAGIAN 2: DATA KLAIM
             const Text("DATA KLAIM PENEMUAN", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.grey)),
             const SizedBox(height: 8),
             Container(
@@ -157,7 +156,7 @@ class _ManageKlaimPageState extends State<ManageKlaimPage> {
                      ),
                   const SizedBox(height: 8),
                   
-                  // FOTO PENEMUAN (Bandingkan dengan foto barang asli)
+                  // FOTO PENEMUAN
                   if (klaim.fotoPenemuan != null)
                     Padding(
                       padding: const EdgeInsets.symmetric(vertical: 8.0),
@@ -212,7 +211,7 @@ class _ManageKlaimPageState extends State<ManageKlaimPage> {
                   Expanded(
                     child: ElevatedButton.icon(
                       onPressed: () {
-                        // Navigasi ke Halaman Bukti Pengembalian
+                        // Navigasi ke Halaman Bukti Pengembalian (Sesuai Request)
                         Navigator.push(
                           context,
                           MaterialPageRoute(
@@ -296,7 +295,6 @@ class _ManageKlaimPageState extends State<ManageKlaimPage> {
   }
 
   Future<void> _handleReject(BuildContext context, KlaimProvider provider, int id) async {
-    // Tampilkan dialog konfirmasi tolak (opsional)
     bool? confirm = await showDialog(
       context: context, 
       builder: (ctx) => AlertDialog(

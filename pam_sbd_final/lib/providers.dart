@@ -127,6 +127,7 @@ class BarangProvider with ChangeNotifier {
 
     if (!_hasMore && !refresh) return;
     if (_isLoading) return;
+
     _isLoading = true;
     if (refresh) notifyListeners(); 
 
@@ -137,12 +138,12 @@ class BarangProvider with ChangeNotifier {
         status: status,
         search: search
       );
-      print("Provider menerima data: ${response['data']}");
+      //print("Provider menerima data: ${response['data']}");
 
       final List<dynamic> data = response['data'];
       final Map<String, dynamic>? meta = response['meta'];
 
-      List<Barang> newItems = data.map((e) => Barang.fromJson(e)).toList();
+      List<Barang> newItems = [];//data.map((e) => Barang.fromJson(e)).toList();
 
       for (var item in data) {
         try {

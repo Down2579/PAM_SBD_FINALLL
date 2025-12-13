@@ -1,5 +1,3 @@
-import 'dart:convert';
-import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
@@ -227,7 +225,7 @@ class _AddItemScreenState extends State<AddItemScreen> {
         _descController.text.isEmpty) {
       
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Please fill all fields"), backgroundColor: Colors.red),
+        const SnackBar(content: Text("Please fill all fields"), backgroundColor: Colors.red),
       );
       return;
     }
@@ -249,7 +247,7 @@ class _AddItemScreenState extends State<AddItemScreen> {
 
     if (success && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Report submitted successfully!"), backgroundColor: Colors.green),
+        const SnackBar(content: Text("Report submitted successfully!"), backgroundColor: Colors.green),
       );
       Navigator.pop(context); // Kembali ke Home/My Task
     } else if (mounted) {

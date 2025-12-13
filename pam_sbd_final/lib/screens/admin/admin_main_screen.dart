@@ -37,11 +37,13 @@ class _AdminMainScreenState extends State<AdminMainScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // DAFTAR HALAMAN (Termasuk Halaman Akun Baru)
     final List<Widget> pages = [
-      const ManageItemsPage(),     // ✅ TAB 1
-      const ManageKlaimPage(),     // TAB 2
-      const ManageKategoriPage(),  // TAB 3
-      const ManageLokasiPage(),    // TAB 4
+      const ManageItemsPage(),     // Tab 0
+      const ManageKlaimPage(),     // Tab 1
+      const ManageKategoriPage(),  // Tab 2
+      const ManageLokasiPage(),    // Tab 3
+      const AdminAccountPage(),    // Tab 4 (Halaman Akun & Logout)
     ];
 
     return Scaffold(
@@ -67,8 +69,8 @@ class _AdminMainScreenState extends State<AdminMainScreen> {
           backgroundColor: Colors.white,
           selectedItemColor: darkNavy,
           unselectedItemColor: Colors.grey[400],
-          showSelectedLabels: true,
-          showUnselectedLabels: true,
+          selectedFontSize: 12,
+          unselectedFontSize: 12,
           elevation: 0,
           items: const [
             BottomNavigationBarItem(
@@ -87,9 +89,109 @@ class _AdminMainScreenState extends State<AdminMainScreen> {
               icon: Icon(Icons.location_on_rounded),
               label: "Lokasi",
             ),
+            // ITEM BARU UNTUK AKUN/LOGOUT
+            BottomNavigationBarItem(
+              icon: Icon(Icons.person_rounded),
+              label: "Akun",
+            ),
           ],
         ),
       ),
     );
+  }
+}
+
+/// =========================================================
+/// HALAMAN BARU KHUSUS PROFIL & LOGOUT ADMIN
+/// =========================================================
+class AdminAccountPage extends StatelessWidget {
+  const AdminAccountPage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final user = Provider.of<AuthProvider>(context).currentUser;
+    const Color darkNavy = Color(0xFF2B4263);
+    const Color errorRed = Color(0xFFEF4444);
+
+    return Scaffold(
+      backgroundColor: const Color(0xFFF5F7FA),
+      appBar: AppBar(
+        title: const Text("Profil Admin", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
+        backgroundColor: darkNavy,
+        elevation: 0,
+      ),
+      body: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              // Avatar Icon
+              Container(
+                width: 100, height: 100,
+                decoration: BoxDecoration(
+                  color: darkNavy.withOpacity(0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.admin_panel_settings_rounded, size: 50, color: darkNavy),
+              ),
+              const SizedBox(height: 24),
+              
+              // Nama & Info
+              Text(
+                user?.namaLengkap ?? "Administrator",
+                style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: darkNavy),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                user?.email ?? "admin@example.com",
+                style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+              ),
+              const SizedBox(height: 40),
+
+              // Tombol Logout
+              SizedBox(
+                width: double.infinity,
+                height: 50,
+                child: ElevatedButton.icon(
+                  onPressed: () => _handleLogout(context),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: errorRed,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    elevation: 0,
+                  ),
+                  icon: const Icon(Icons.logout_rounded, color: Colors.white),
+                  label: const Text("Keluar Aplikasi", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _handleLogout(BuildContext context) async {
+    // Tampilkan konfirmasi
+    bool confirm = await showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text("Konfirmasi Keluar"),
+        content: const Text("Apakah Anda yakin ingin keluar dari aplikasi?"),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text("Batal")),
+          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text("Keluar", style: TextStyle(color: Colors.red))),
+        ],
+      ),
+    ) ?? false;
+
+    if (confirm && context.mounted) {
+      await Provider.of<AuthProvider>(context, listen: false).logout();
+      
+      if (context.mounted) {
+        // Kembali ke halaman Login (Route '/')
+        Navigator.of(context).pushNamedAndRemoveUntil('/', (route) => false);
+      }
+    }
   }
 }

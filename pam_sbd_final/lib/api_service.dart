@@ -187,11 +187,24 @@ class ApiService {
     }
   }
 
-  Future<bool> deleteBarang(int id) async {
+Future<bool> deleteBarang(int id) async {
     final url = Uri.parse('$baseUrl/barang/$id');
     final headers = await _getHeaders();
+    
+    print("DEBUG: Mencoba hapus barang ID $id"); // Debug 1
+
     final response = await http.delete(url, headers: headers);
-    return response.statusCode == 200;
+    
+    print("DEBUG STATUS DELETE: ${response.statusCode}"); // Debug 2
+    print("DEBUG BODY DELETE: ${response.body}"); // Debug 3 <--- INI KUNCINYA
+
+    if (response.statusCode == 200) {
+      return true;
+    } else {
+      // Jangan throw exception, tapi return false biar gak crash, 
+      // tapi kita sudah liat errornya di print atas.
+      return false; 
+    }
   }
 
   // ===========================================================================
