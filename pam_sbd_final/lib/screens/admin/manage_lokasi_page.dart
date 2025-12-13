@@ -3,165 +3,213 @@ import 'package:provider/provider.dart';
 import '../../providers.dart';
 import '../../models.dart';
 
-class ManageLokasiPage extends StatelessWidget {
+class ManageLokasiPage extends StatefulWidget {
   const ManageLokasiPage({super.key});
 
+  @override
+  State<ManageLokasiPage> createState() => _ManageLokasiPageState();
+}
+
+class _ManageLokasiPageState extends State<ManageLokasiPage> {
   final Color darkNavy = const Color(0xFF2B4263);
   final Color bgPage = const Color(0xFFF5F7FA);
   final Color orangeBrand = const Color(0xFFF97316);
+  final Color errorRed = const Color(0xFFEF4444);
+  final Color accentBlue = const Color(0xFF4A90E2);
+
+  @override
+  void initState() {
+    super.initState();
+    Future.microtask(() => 
+      Provider.of<GeneralProvider>(context, listen: false).loadMasterData()
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
-    final generalProvider = Provider.of<GeneralProvider>(context);
-
     return Scaffold(
       backgroundColor: bgPage,
-      body: SafeArea(
-        child: Column(
+      appBar: AppBar(
+        backgroundColor: darkNavy,
+        elevation: 0,
+        title: const Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // HEADER MODERN
-            Container(
-              padding: const EdgeInsets.fromLTRB(24, 24, 24, 10),
-              alignment: Alignment.centerLeft,
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text("Master Lokasi", style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: darkNavy)),
-                      Text("Atur titik lokasi kampus", style: TextStyle(color: Colors.grey[600], fontSize: 13)),
-                    ],
-                  ),
-                  Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(12),
-                      boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10)]
-                    ),
-                    child: Icon(Icons.map_rounded, color: orangeBrand, size: 28),
-                  )
-                ],
-              ),
-            ),
-            
-            // LIST ITEM
-            Expanded(
-              child: ListView.builder(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                itemCount: generalProvider.lokasiList.length,
-                itemBuilder: (context, index) {
-                  final item = generalProvider.lokasiList[index];
-                  return _buildModernCard(context, generalProvider, item);
-                },
-              ),
-            ),
+            Text("Master Lokasi", style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+            Text("Atur titik lokasi & deskripsi", style: TextStyle(color: Colors.white70, fontSize: 12)),
           ],
         ),
       ),
+      body: Consumer<GeneralProvider>(
+        builder: (context, provider, child) {
+          if (provider.isLoading) return Center(child: CircularProgressIndicator(color: orangeBrand));
+          if (provider.lokasiList.isEmpty) return _buildEmptyState();
+
+          return RefreshIndicator(
+            onRefresh: () => provider.loadMasterData(),
+            color: orangeBrand,
+            child: ListView.separated(
+              padding: const EdgeInsets.all(16),
+              itemCount: provider.lokasiList.length,
+              separatorBuilder: (context, index) => const SizedBox(height: 12),
+              itemBuilder: (context, index) {
+                return _buildLocationCard(provider.lokasiList[index], provider);
+              },
+            ),
+          );
+        },
+      ),
       floatingActionButton: FloatingActionButton.extended(
         backgroundColor: darkNavy,
-        icon: const Icon(Icons.add_location_alt_rounded, color: Colors.white),
-        label: const Text("New Location", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-        onPressed: () => _showFormDialog(context, generalProvider, null),
+        icon: const Icon(Icons.add_location_alt_outlined, color: Colors.white),
+        label: const Text("Lokasi Baru", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+        onPressed: () => _showFormDialog(context, Provider.of<GeneralProvider>(context, listen: false), null),
       ),
     );
   }
 
-  Widget _buildModernCard(BuildContext context, GeneralProvider provider, Lokasi item) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(color: const Color(0xFFE5E7EB).withOpacity(0.5), blurRadius: 8, offset: const Offset(0, 4))
+  Widget _buildEmptyState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.map_outlined, size: 80, color: Colors.grey[300]),
+          const SizedBox(height: 16),
+          Text("Belum ada data lokasi", style: TextStyle(color: Colors.grey[500], fontSize: 16)),
         ],
       ),
-      child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-        leading: Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: orangeBrand.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(12),
+    );
+  }
+
+  Widget _buildLocationCard(Lokasi item, GeneralProvider provider) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 4, offset: const Offset(0, 2))],
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: orangeBrand.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(Icons.place, color: orangeBrand, size: 24),
           ),
-          child: Icon(Icons.place_rounded, color: orangeBrand, size: 22),
-        ),
-        title: Text(
-          item.namaLokasi,
-          style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey[800], fontSize: 16),
-        ),
-        trailing: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            IconButton(
-              icon: const Icon(Icons.edit_rounded, color: Colors.blue, size: 22),
-              onPressed: () => _showFormDialog(context, provider, item),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  item.namaLokasi,
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  item.deskripsi != null && item.deskripsi!.isNotEmpty 
+                      ? item.deskripsi! 
+                      : "Tidak ada deskripsi",
+                  style: TextStyle(fontSize: 13, color: Colors.grey[600], height: 1.3),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
             ),
-            IconButton(
-              icon: Icon(Icons.delete_outline_rounded, color: Colors.red[300], size: 22),
-              onPressed: () => _confirmDelete(context, provider, item),
-            ),
-          ],
-        ),
+          ),
+          Column(
+            children: [
+              IconButton(
+                icon: Icon(Icons.edit_outlined, color: accentBlue, size: 20),
+                onPressed: () => _showFormDialog(context, provider, item),
+                constraints: const BoxConstraints(),
+                padding: EdgeInsets.zero,
+              ),
+              const SizedBox(height: 12),
+              IconButton(
+                icon: Icon(Icons.delete_outline, color: errorRed, size: 20),
+                onPressed: () => _confirmDelete(context, provider, item),
+                constraints: const BoxConstraints(),
+                padding: EdgeInsets.zero,
+              ),
+            ],
+          )
+        ],
       ),
     );
   }
 
   void _showFormDialog(BuildContext context, GeneralProvider provider, Lokasi? item) {
     final isEdit = item != null;
-    final controller = TextEditingController(text: isEdit ? item.namaLokasi : '');
+    final nameController = TextEditingController(text: isEdit ? item.namaLokasi : '');
+    final descController = TextEditingController(text: isEdit ? item.deskripsi : '');
     
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: Colors.white,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Row(
-          children: [
-            Icon(isEdit ? Icons.edit_location_alt_rounded : Icons.add_location_alt_rounded, color: darkNavy),
-            const SizedBox(width: 10),
-            Text(isEdit ? "Edit Location" : "New Location", style: TextStyle(color: darkNavy, fontWeight: FontWeight.bold)),
-          ],
-        ),
-        content: TextField(
-          controller: controller,
-          decoration: InputDecoration(
-            hintText: "Location Name (e.g. Gedung B)",
-            filled: true,
-            fillColor: bgPage,
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Text(isEdit ? "Edit Lokasi" : "Tambah Lokasi", style: TextStyle(color: darkNavy, fontWeight: FontWeight.bold)),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text("Nama Lokasi", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 6),
+              TextField(
+                controller: nameController,
+                decoration: InputDecoration(
+                  hintText: "Contoh: Gedung A",
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                ),
+              ),
+              const SizedBox(height: 16),
+              const Text("Deskripsi", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 6),
+              TextField(
+                controller: descController,
+                maxLines: 3,
+                decoration: InputDecoration(
+                  hintText: "Detail lokasi...",
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                  contentPadding: const EdgeInsets.all(12),
+                ),
+              ),
+            ],
           ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx), 
-            child: Text("Cancel", style: TextStyle(color: Colors.grey[600], fontWeight: FontWeight.w600))
+            child: const Text("Batal", style: TextStyle(color: Colors.grey))
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
               backgroundColor: darkNavy,
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))
             ),
             onPressed: () async {
-              if (controller.text.trim().isEmpty) return;
+              if (nameController.text.trim().isEmpty) return;
               Navigator.pop(ctx);
               
               bool success;
               if (isEdit) {
-                success = await provider.editLokasi(item.id, controller.text.trim());
+                // Pastikan provider mendukung parameter deskripsi
+                success = await provider.editLokasi(item.id, nameController.text.trim(), descController.text.trim());
               } else {
-                success = await provider.addLokasi(controller.text.trim());
+                success = await provider.addLokasi(nameController.text.trim(), descController.text.trim());
               }
 
-              if (!success) {
-                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(isEdit ? "Gagal update" : "Gagal tambah"), backgroundColor: Colors.red));
+              if (success && context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Berhasil menyimpan data"), backgroundColor: Colors.green));
               }
             },
-            child: Text(isEdit ? "Update" : "Create", style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+            child: const Text("Simpan", style: TextStyle(color: Colors.white)),
           ),
         ],
       ),
@@ -179,10 +227,9 @@ class ManageLokasiPage extends StatelessWidget {
           TextButton(
             onPressed: () async {
               Navigator.pop(ctx);
-              bool success = await provider.deleteLokasi(item.id);
-              if (!success) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Gagal menghapus")));
+              await provider.deleteLokasi(item.id);
             },
-            child: const Text("Hapus", style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+            child: const Text("Hapus", style: TextStyle(color: Colors.red)),
           ),
         ],
       ),

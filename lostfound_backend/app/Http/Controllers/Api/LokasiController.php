@@ -102,27 +102,18 @@ class LokasiController extends Controller
         $lokasi = Lokasi::find($id);
 
         if (!$lokasi) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Lokasi tidak ditemukan.'
-            ], 404);
+            return response()->json(['success' => false, 'message' => 'Lokasi tidak ditemukan'], 404);
         }
 
-        try {
-            $lokasi->delete();
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Lokasi berhasil dihapus.'
-            ]);
-
-        } catch (\Exception $e) {
-
+        if ($lokasi->barang()->exists()) {
             return response()->json([
                 'success' => false,
-                'message' => 'Gagal menghapus lokasi.',
-                'error' => $e->getMessage()
-            ], 500);
+                'message' => 'Gagal: Lokasi ini sedang digunakan oleh data barang.'
+            ], 409);
         }
+
+        $lokasi->delete();
+
+        return response()->json(['success' => true, 'message' => 'Lokasi berhasil dihapus']);
     }
 }

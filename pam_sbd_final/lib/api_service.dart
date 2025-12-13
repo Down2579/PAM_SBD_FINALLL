@@ -232,15 +232,23 @@ class ApiService {
 
   // ADMIN: Get All Klaim
   Future<List<dynamic>> getAllKlaim() async {
-    final url = Uri.parse('$baseUrl/klaim-penemuan'); // Pastikan route ini ada di Laravel
+    final url = Uri.parse('$baseUrl/klaim-penemuan');
+    try{ // Pastikan route ini ada di Laravel
     final headers = await _getHeaders();
     final response = await http.get(url, headers: headers);
-
+    print("DEBUG URL: $url");
+    print("DEBUG STATUS: ${response.statusCode}");
+    print("DEBUG BODY: ${response.body}");
     if (response.statusCode == 200) {
       return jsonDecode(response.body)['data'];
     } else {
-      throw Exception('Gagal mengambil data semua klaim');
+      print("SERVER ERROR: ${response.body}");
+      throw Exception('Gagal mengambil data semua klaim. Status: ${response.statusCode}');
     }
+  }catch (e) {
+      print("CONNECTION ERROR: $e");
+      rethrow;
+  }
   }
 
   Future<bool> updateStatusKlaim(int klaimId, String status) async {
@@ -289,23 +297,38 @@ class ApiService {
   }
 
   // ADMIN CRUD: KATEGORI
-  Future<List<dynamic>> getKategori() async {
-    final url = Uri.parse('$baseUrl/kategori');
-    final response = await http.get(url, headers: {'Accept': 'application/json'});
+Future<List<dynamic>> getKategori() async {
+  final url = Uri.parse('$baseUrl/kategori');
+
+  try {
+    final headers = await _getHeaders();
+    final response = await http.get(url, headers: headers);
+
+    print('DEBUG KATEGORI URL: $url');
+    print('DEBUG KATEGORI STATUS: ${response.statusCode}');
+    print('DEBUG KATEGORI BODY: ${response.body}');
+
     if (response.statusCode == 200) {
       return jsonDecode(response.body)['data'];
     } else {
-      throw Exception('Failed to load categories');
+      throw Exception(
+        'Gagal load kategori. Status: ${response.statusCode}, Body: ${response.body}'
+      );
     }
+  } catch (e) {
+    print('KATEGORI CONNECTION ERROR: $e');
+    rethrow;
   }
+}
 
-  Future<Map<String, dynamic>> createKategori(String nama) async {
+
+  Future<Map<String, dynamic>> createKategori(String nama, String deskripsi) async {
     final url = Uri.parse('$baseUrl/kategori');
     final headers = await _getHeaders();
     final response = await http.post(
       url, 
       headers: headers,
-      body: jsonEncode({'nama_kategori': nama})
+      body: jsonEncode({'nama_kategori': nama, 'deskripsi': deskripsi})
     );
     if (response.statusCode == 201) {
       return jsonDecode(response.body)['data'];
@@ -313,42 +336,68 @@ class ApiService {
       throw Exception('Gagal tambah kategori');
     }
   }
-  Future<bool> updateKategori(int id, String nama) async {
+  Future<bool> updateKategori(int id, String nama, String deskripsi) async {
     final url = Uri.parse('$baseUrl/kategori/$id');
     final headers = await _getHeaders();
     final response = await http.put(
       url,
       headers: headers,
-      body: jsonEncode({'nama_kategori': nama}),
+      body: jsonEncode({'nama_kategori': nama, 'deskripsi': deskripsi}),
     );
     return response.statusCode == 200;
   }
   
-  Future<bool> deleteKategori(int id) async {
-    final url = Uri.parse('$baseUrl/kategori/$id');
+Future<bool> deleteKategori(int id) async {
+  final url = Uri.parse('$baseUrl/kategori/$id');
+
+  try {
     final headers = await _getHeaders();
     final response = await http.delete(url, headers: headers);
+
+    print('DEBUG DELETE Kategori URL: $url');
+    print('DEBUG DELETE Kategori STATUS: ${response.statusCode}');
+    print('DEBUG DELETE Kategori BODY: ${response.body}');
+
     return response.statusCode == 200;
+  } catch (e) {
+    print('DELETE Kategori CONNECTION ERROR: $e');
+    return false;
   }
+}
+
 
   // ADMIN CRUD: LOKASI
-  Future<List<dynamic>> getLokasi() async {
-    final url = Uri.parse('$baseUrl/lokasi');
-    final response = await http.get(url, headers: {'Accept': 'application/json'});
+Future<List<dynamic>> getLokasi() async {
+  final url = Uri.parse('$baseUrl/lokasi');
+
+  try {
+    final headers = await _getHeaders();
+    final response = await http.get(url, headers: headers);
+
+    print('DEBUG LOKASI URL: $url');
+    print('DEBUG LOKASI STATUS: ${response.statusCode}');
+    print('DEBUG LOKASI BODY: ${response.body}');
+
     if (response.statusCode == 200) {
       return jsonDecode(response.body)['data'];
     } else {
-      throw Exception('Failed to load locations');
+      throw Exception(
+        'Gagal load kategori. Status: ${response.statusCode}, Body: ${response.body}'
+      );
     }
+  } catch (e) {
+    print('KATEGORI CONNECTION ERROR: $e');
+    rethrow;
   }
+}
 
-  Future<Map<String, dynamic>> createLokasi(String nama) async {
+  Future<Map<String, dynamic>> createLokasi(String nama, String deskripsi) async {
     final url = Uri.parse('$baseUrl/lokasi');
     final headers = await _getHeaders();
     final response = await http.post(
       url, 
       headers: headers,
-      body: jsonEncode({'nama_lokasi': nama})
+      body: jsonEncode({'nama_lokasi': nama, 'deskripsi': deskripsi})
     );
     if (response.statusCode == 201) {
       return jsonDecode(response.body)['data'];
@@ -356,13 +405,13 @@ class ApiService {
       throw Exception('Gagal tambah lokasi');
     }
   }
-  Future<bool> updateLokasi(int id, String nama) async {
+  Future<bool> updateLokasi(int id, String nama, String deskripsi) async {
     final url = Uri.parse('$baseUrl/lokasi/$id');
     final headers = await _getHeaders();
     final response = await http.put(
       url,
       headers: headers,
-      body: jsonEncode({'nama_lokasi': nama}),
+      body: jsonEncode({'nama_lokasi': nama, 'deskripsi': deskripsi}),
     );
     return response.statusCode == 200;
   }

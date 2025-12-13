@@ -3,184 +3,213 @@ import 'package:provider/provider.dart';
 import '../../providers.dart';
 import '../../models.dart';
 
-class ManageKategoriPage extends StatelessWidget {
+class ManageKategoriPage extends StatefulWidget {
   const ManageKategoriPage({super.key});
 
+  @override
+  State<ManageKategoriPage> createState() => _ManageKategoriPageState();
+}
+
+class _ManageKategoriPageState extends State<ManageKategoriPage> {
   final Color darkNavy = const Color(0xFF2B4263);
-  final Color accentBlue = const Color(0xFF4A90E2);
   final Color bgPage = const Color(0xFFF5F7FA);
+  final Color accentBlue = const Color(0xFF4A90E2);
+  final Color errorRed = const Color(0xFFEF4444);
+
+  @override
+  void initState() {
+    super.initState();
+    Future.microtask(() => 
+      Provider.of<GeneralProvider>(context, listen: false).fetchKategori()
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
-    final generalProvider = Provider.of<GeneralProvider>(context);
-
     return Scaffold(
       backgroundColor: bgPage,
-      body: SafeArea(
-        child: Column(
+      appBar: AppBar(
+        backgroundColor: darkNavy,
+        elevation: 0,
+        title: const Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // HEADER MODERN
-            Container(
-              padding: const EdgeInsets.fromLTRB(24, 24, 24, 10),
-              alignment: Alignment.centerLeft,
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text("Master Kategori", style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: darkNavy)),
-                      Text("Atur jenis barang (Electronics, dll)", style: TextStyle(color: Colors.grey[600], fontSize: 13)),
-                    ],
-                  ),
-                  Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(12),
-                      boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10)]
-                    ),
-                    child: Icon(Icons.category_rounded, color: darkNavy, size: 28),
-                  )
-                ],
-              ),
-            ),
-            
-            // LIST ITEM
-            Expanded(
-              child: ListView.builder(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                itemCount: generalProvider.kategoriList.length,
-                itemBuilder: (context, index) {
-                  final item = generalProvider.kategoriList[index];
-                  return _buildModernCard(context, generalProvider, item);
-                },
-              ),
-            ),
+            Text("Master Kategori", style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+            Text("Atur jenis barang & deskripsi", style: TextStyle(color: Colors.white70, fontSize: 12)),
           ],
         ),
+      ),
+      body: Consumer<GeneralProvider>(
+        builder: (context, provider, child) {
+          if (provider.isLoading) return Center(child: CircularProgressIndicator(color: darkNavy));
+          if (provider.kategoriList.isEmpty) return _buildEmptyState();
+
+          return RefreshIndicator(
+            onRefresh: () => provider.fetchKategori(),
+            color: darkNavy,
+            child: ListView.separated(
+              padding: const EdgeInsets.all(16),
+              itemCount: provider.kategoriList.length,
+              separatorBuilder: (context, index) => const SizedBox(height: 12),
+              itemBuilder: (context, index) {
+                return _buildCategoryCard(provider.kategoriList[index], provider);
+              },
+            ),
+          );
+        },
       ),
       floatingActionButton: FloatingActionButton.extended(
         backgroundColor: darkNavy,
         icon: const Icon(Icons.add, color: Colors.white),
-        label: const Text("New Category", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-        onPressed: () => _showFormDialog(context, generalProvider, null),
+        label: const Text("Kategori Baru", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+        onPressed: () => _showFormDialog(context, Provider.of<GeneralProvider>(context, listen: false), null),
       ),
     );
   }
 
-  Widget _buildModernCard(BuildContext context, GeneralProvider provider, Kategori item) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(color: const Color(0xFFE5E7EB).withOpacity(0.5), blurRadius: 8, offset: const Offset(0, 4))
+  Widget _buildEmptyState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.category_outlined, size: 80, color: Colors.grey[300]),
+          const SizedBox(height: 16),
+          Text("Belum ada kategori", style: TextStyle(color: Colors.grey[500], fontSize: 16)),
         ],
       ),
-      child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-        leading: Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [darkNavy.withOpacity(0.1), darkNavy.withOpacity(0.05)],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
+    );
+  }
+
+  Widget _buildCategoryCard(Kategori item, GeneralProvider provider) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 4, offset: const Offset(0, 2))],
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start, // Align top jika deskripsi panjang
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: darkNavy.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(8),
             ),
-            borderRadius: BorderRadius.circular(12),
+            child: Icon(Icons.label, color: darkNavy, size: 24),
           ),
-          child: Icon(Icons.label_outline_rounded, color: darkNavy, size: 22),
-        ),
-        title: Text(
-          item.namaKategori,
-          style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey[800], fontSize: 16),
-        ),
-        trailing: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // EDIT BUTTON
-            IconButton(
-              icon: Icon(Icons.edit_rounded, color: accentBlue, size: 22),
-              onPressed: () => _showFormDialog(context, provider, item),
-              tooltip: "Edit",
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  item.namaKategori,
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                ),
+                const SizedBox(height: 4),
+                // Menampilkan Deskripsi
+                Text(
+                  item.deskripsi != null && item.deskripsi!.isNotEmpty 
+                      ? item.deskripsi! 
+                      : "Tidak ada deskripsi",
+                  style: TextStyle(fontSize: 13, color: Colors.grey[600], height: 1.3),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
             ),
-            // DELETE BUTTON
-            IconButton(
-              icon: Icon(Icons.delete_outline_rounded, color: Colors.red[300], size: 22),
-              onPressed: () => _confirmDelete(context, provider, item),
-              tooltip: "Delete",
-            ),
-          ],
-        ),
+          ),
+          Column(
+            children: [
+              IconButton(
+                icon: Icon(Icons.edit_outlined, color: accentBlue, size: 20),
+                onPressed: () => _showFormDialog(context, provider, item),
+                constraints: const BoxConstraints(),
+                padding: EdgeInsets.zero,
+              ),
+              const SizedBox(height: 12),
+              IconButton(
+                icon: Icon(Icons.delete_outline, color: errorRed, size: 20),
+                onPressed: () => _confirmDelete(context, provider, item),
+                constraints: const BoxConstraints(),
+                padding: EdgeInsets.zero,
+              ),
+            ],
+          )
+        ],
       ),
     );
   }
 
-  // --- REUSABLE DIALOG FOR ADD & EDIT ---
   void _showFormDialog(BuildContext context, GeneralProvider provider, Kategori? item) {
     final isEdit = item != null;
-    final controller = TextEditingController(text: isEdit ? item.namaKategori : '');
+    final nameController = TextEditingController(text: isEdit ? item.namaKategori : '');
+    final descController = TextEditingController(text: isEdit ? item.deskripsi : ''); // Controller Deskripsi
     
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: Colors.white,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Row(
-          children: [
-            Icon(isEdit ? Icons.edit_note_rounded : Icons.add_circle_outline, color: darkNavy),
-            const SizedBox(width: 10),
-            Text(isEdit ? "Edit Category" : "New Category", style: TextStyle(color: darkNavy, fontWeight: FontWeight.bold)),
-          ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: controller,
-              style: TextStyle(color: Colors.grey[800]),
-              decoration: InputDecoration(
-                hintText: "Category Name (e.g. Electronics)",
-                hintStyle: TextStyle(color: Colors.grey[400]),
-                filled: true,
-                fillColor: bgPage,
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-                focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: darkNavy, width: 1.5)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Text(isEdit ? "Edit Kategori" : "Tambah Kategori", style: TextStyle(color: darkNavy, fontWeight: FontWeight.bold)),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text("Nama Kategori", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 6),
+              TextField(
+                controller: nameController,
+                decoration: InputDecoration(
+                  hintText: "Contoh: Elektronik",
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                ),
               ),
-            ),
-          ],
+              const SizedBox(height: 16),
+              const Text("Deskripsi", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 6),
+              TextField(
+                controller: descController,
+                maxLines: 3, // Area teks lebih besar
+                decoration: InputDecoration(
+                  hintText: "Deskripsi singkat kategori...",
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                  contentPadding: const EdgeInsets.all(12),
+                ),
+              ),
+            ],
+          ),
         ),
-        actionsPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx), 
-            child: Text("Cancel", style: TextStyle(color: Colors.grey[600], fontWeight: FontWeight.w600))
+            child: const Text("Batal", style: TextStyle(color: Colors.grey))
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
               backgroundColor: darkNavy,
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))
             ),
             onPressed: () async {
-              if (controller.text.trim().isEmpty) return;
-              
+              if (nameController.text.trim().isEmpty) return;
               Navigator.pop(ctx);
-              bool success;
               
+              bool success;
               if (isEdit) {
-                success = await provider.editKategori(item.id, controller.text.trim());
+                // Pastikan provider Anda menerima parameter deskripsi
+                success = await provider.editKategori(item.id, nameController.text.trim(), descController.text.trim());
               } else {
-                success = await provider.addKategori(controller.text.trim());
+                success = await provider.addKategori(nameController.text.trim(), descController.text.trim());
               }
 
-              if (!success) {
-                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(isEdit ? "Gagal update" : "Gagal tambah"), backgroundColor: Colors.red));
+              if (success && context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Berhasil menyimpan data"), backgroundColor: Colors.green));
               }
             },
-            child: Text(isEdit ? "Update" : "Create", style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+            child: const Text("Simpan", style: TextStyle(color: Colors.white)),
           ),
         ],
       ),
@@ -191,17 +220,16 @@ class ManageKategoriPage extends StatelessWidget {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text("Hapus Kategori?"),
+        title: const Text("Hapus Data?"),
         content: Text("Yakin ingin menghapus '${item.namaKategori}'?"),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("Batal")),
           TextButton(
             onPressed: () async {
               Navigator.pop(ctx);
-              bool success = await provider.deleteKategori(item.id);
-              if (!success) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Gagal menghapus")));
+              await provider.deleteKategori(item.id);
             },
-            child: const Text("Hapus", style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+            child: const Text("Hapus", style: TextStyle(color: Colors.red)),
           ),
         ],
       ),

@@ -102,27 +102,20 @@ class KategoriController extends Controller
         $kategori = Kategori::find($id);
 
         if (!$kategori) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Kategori tidak ditemukan.'
-            ], 404);
+            return response()->json(['success' => false, 'message' => 'Kategori tidak ditemukan'], 404);
         }
 
-        try {
-            $kategori->delete();
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Kategori berhasil dihapus.'
-            ]);
-
-        } catch (\Exception $e) {
-
+        // --- CEK APAKAH ADA BARANG YANG MENGGUNAKAN KATEGORI INI ---
+        // Pastikan relasi 'barang' sudah ada di model Kategori
+        if ($kategori->barang()->exists()) {
             return response()->json([
                 'success' => false,
-                'message' => 'Gagal menghapus kategori.',
-                'error' => $e->getMessage()
-            ], 500);
+                'message' => 'Gagal: Kategori ini sedang digunakan oleh data barang.'
+            ], 409); // 409 Conflict
         }
+
+        $kategori->delete();
+
+        return response()->json(['success' => true, 'message' => 'Kategori berhasil dihapus']);
     }
 }

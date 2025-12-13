@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:intl/intl.dart'; // Tambahkan package intl di pubspec.yaml
 import '../../providers.dart';
 import '../../models.dart';
+import 'form_bukti_pengembalian_page.dart'; // Import halaman bukti
 
 class ManageKlaimPage extends StatefulWidget {
   const ManageKlaimPage({super.key});
@@ -15,6 +17,9 @@ class _ManageKlaimPageState extends State<ManageKlaimPage> {
   final Color bgPage = const Color(0xFFF5F7FA);
   final Color successGreen = const Color(0xFF10B981);
   final Color errorRed = const Color(0xFFEF4444);
+  
+  // Ganti dengan IP komputer/server Anda (sama seperti di ApiService)
+  final String baseUrlImage = 'http://10.0.2.2:8000/storage/'; 
 
   @override
   void initState() {
@@ -28,47 +33,29 @@ class _ManageKlaimPageState extends State<ManageKlaimPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: bgPage,
-      body: SafeArea(
-        child: Column(
-          children: [
-            _buildHeader(),
-            Expanded(
-              child: Consumer<KlaimProvider>(
-                builder: (context, provider, child) {
-                  if (provider.isLoading) return Center(child: CircularProgressIndicator(color: darkNavy));
-                  if (provider.klaimList.isEmpty) return _buildEmptyState();
-
-                  return RefreshIndicator(
-                    onRefresh: () => provider.fetchAllKlaim(),
-                    color: darkNavy,
-                    child: ListView.builder(
-                      padding: const EdgeInsets.all(20),
-                      itemCount: provider.klaimList.length,
-                      itemBuilder: (context, index) {
-                        return _buildKlaimCard(provider.klaimList[index], provider);
-                      },
-                    ),
-                  );
-                },
-              ),
-            ),
-          ],
-        ),
+      appBar: AppBar(
+        title: const Text("Validasi Klaim", style: TextStyle(color: Colors.white)),
+        backgroundColor: darkNavy,
+        elevation: 0,
       ),
-    );
-  }
+      body: Consumer<KlaimProvider>(
+        builder: (context, provider, child) {
+          if (provider.isLoading) return Center(child: CircularProgressIndicator(color: darkNavy));
+          if (provider.klaimList.isEmpty) return _buildEmptyState();
 
-  Widget _buildHeader() {
-    return Container(
-      padding: const EdgeInsets.all(24),
-      color: bgPage,
-      width: double.infinity,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text("Incoming Claims", style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: darkNavy)),
-          Text("Validasi permintaan klaim barang", style: TextStyle(color: Colors.grey[600], fontSize: 13)),
-        ],
+          return RefreshIndicator(
+            onRefresh: () => provider.fetchAllKlaim(),
+            color: darkNavy,
+            child: ListView.separated(
+              padding: const EdgeInsets.all(16),
+              itemCount: provider.klaimList.length,
+              separatorBuilder: (context, index) => const SizedBox(height: 16),
+              itemBuilder: (context, index) {
+                return _buildFullKlaimCard(provider.klaimList[index], provider);
+              },
+            ),
+          );
+        },
       ),
     );
   }
@@ -78,133 +65,260 @@ class _ManageKlaimPageState extends State<ManageKlaimPage> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.assignment_turned_in_outlined, size: 70, color: Colors.grey[300]),
+          Icon(Icons.folder_off_outlined, size: 80, color: Colors.grey[300]),
           const SizedBox(height: 16),
-          Text("Tidak ada data klaim", style: TextStyle(color: Colors.grey[500], fontWeight: FontWeight.bold)),
+          Text("Tidak ada klaim masuk", style: TextStyle(color: Colors.grey[500], fontSize: 16)),
         ],
       ),
     );
   }
 
-  Widget _buildKlaimCard(KlaimPenemuan klaim, KlaimProvider provider) {
-    bool isPending = klaim.statusKlaim == 'menunggu_verifikasi_pemilik' || klaim.statusKlaim == 'menunggu_verifikasi_admin'; // Sesuaikan enum db
-    // Jika backend menggunakan status lain, sesuaikan logic ini
+  Widget _buildFullKlaimCard(KlaimPenemuan klaim, KlaimProvider provider) {
+    final barang = klaim.barang;
+    final penemu = klaim.penemu;
+    final pelapor = barang?.pelapor; // Asumsi ada relasi pelapor di model Barang
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 10, offset: const Offset(0, 4))],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                decoration: BoxDecoration(
-                  color: darkNavy.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text("#${klaim.id}", style: TextStyle(fontWeight: FontWeight.bold, color: darkNavy, fontSize: 12)),
-              ),
-              const Spacer(),
-              _buildStatusBadge(klaim.statusKlaim),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Icon(Icons.inventory_2_outlined, size: 20, color: Colors.grey[400]),
-              const SizedBox(width: 10),
-              // Nama barang (Perlu relasi di model, jika null tampilkan ID)
-              Expanded(
-                child: Text(
-                   "Barang ID: ${klaim.idBarang}", // Idealnya: klaim.barang?.namaBarang
-                   style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              Icon(Icons.person_outline, size: 20, color: Colors.grey[400]),
-              const SizedBox(width: 10),
-              Text(klaim.penemu?.namaLengkap ?? "User ID: ${klaim.idPenemu}", style: const TextStyle(fontWeight: FontWeight.w500)),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(color: bgPage, borderRadius: BorderRadius.circular(12)),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+    // Logic status untuk mendisable tombol jika sudah selesai
+    bool isActionable = klaim.statusKlaim == 'menunggu_verifikasi_pemilik' || 
+                        klaim.statusKlaim == 'menunggu_verifikasi_admin';
+
+    return Card(
+      elevation: 4,
+      shadowColor: Colors.black12,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // HEADER: ID & Status
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text("Alasan Klaim:", style: TextStyle(fontSize: 10, color: Colors.grey)),
-                Text(klaim.deskripsiPenemuan ?? "-", style: const TextStyle(fontSize: 13, fontStyle: FontStyle.italic)),
+                Chip(
+                  label: Text("Klaim No ${klaim.id}", style: const TextStyle(fontSize: 12, color: Colors.white)),
+                  backgroundColor: darkNavy,
+                  padding: EdgeInsets.zero,
+                  visualDensity: VisualDensity.compact,
+                ),
+                _buildStatusBadge(klaim.statusKlaim),
               ],
             ),
-          ),
-          const SizedBox(height: 16),
-          
-          // Action Buttons
-          Row(
-            children: [
-              Expanded(
-                child: OutlinedButton(
-                  onPressed: () => _handleAction(context, provider, klaim.id, 'ditolak_admin'),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: errorRed,
-                    side: BorderSide(color: errorRed.withOpacity(0.5)),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))
+            const Divider(),
+
+            // BAGIAN 1: DATA BARANG (Yang Hilang)
+            const Text("DATA BARANG", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.grey)),
+            const SizedBox(height: 8),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // FOTO BARANG ASLI
+                _buildImageThumb(barang?.gambarUrl),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(barang?.namaBarang ?? "Barang ID ${klaim.idBarang}", 
+                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: darkNavy)),
+                      Text("${barang?.kategori?.namaKategori ?? '-'} • ${barang?.lokasi?.namaLokasi ?? '-'}",
+                          style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                      const SizedBox(height: 4),
+                      Text("Pelapor: ${pelapor?.namaLengkap ?? '-'}", style: const TextStyle(fontSize: 12)),
+                    ],
                   ),
-                  child: const Text("Tolak"),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: ElevatedButton(
-                  onPressed: () => _handleAction(context, provider, klaim.id, 'diterima_pemilik'), // Atau divalidasi_admin
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: darkNavy,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))
+                )
+              ],
+            ),
+            
+            const SizedBox(height: 16),
+
+            // BAGIAN 2: DATA KLAIM (Penemuan)
+            const Text("DATA KLAIM PENEMUAN", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.grey)),
+            const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(color: bgPage, borderRadius: BorderRadius.circular(8)),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      const Icon(Icons.person_pin, size: 16, color: Colors.grey),
+                      const SizedBox(width: 8),
+                      Text("Penemu: ${penemu?.namaLengkap ?? 'User ${klaim.idPenemu}'}", 
+                        style: const TextStyle(fontWeight: FontWeight.w600)),
+                    ],
                   ),
-                  child: const Text("Terima", style: TextStyle(color: Colors.white)),
-                ),
+                  if (penemu?.nomorTelepon != null)
+                     Padding(
+                       padding: const EdgeInsets.only(left: 24, top: 2),
+                       child: Text(penemu!.nomorTelepon!, style: const TextStyle(fontSize: 12, color: Colors.blue)),
+                     ),
+                  const SizedBox(height: 8),
+                  
+                  // FOTO PENEMUAN (Bandingkan dengan foto barang asli)
+                  if (klaim.fotoPenemuan != null)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 8.0),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: Image.network(
+                          klaim.fotoPenemuan!.startsWith('http') ? klaim.fotoPenemuan! : baseUrlImage + klaim.fotoPenemuan!,
+                          height: 150,
+                          width: double.infinity,
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) => 
+                             Container(height: 50, color: Colors.grey[200], child: const Center(child: Text("Gagal muat foto penemuan"))),
+                        ),
+                      ),
+                    ),
+
+                  const SizedBox(height: 4),
+                  const Text("Lokasi Ditemukan:", style: TextStyle(fontSize: 11, color: Colors.grey)),
+                  Text(klaim.lokasiDitemukan, style: const TextStyle(fontWeight: FontWeight.w500)),
+                  
+                  const SizedBox(height: 4),
+                  const Text("Alasan/Deskripsi:", style: TextStyle(fontSize: 11, color: Colors.grey)),
+                  Text(klaim.deskripsiPenemuan ?? "-", style: const TextStyle(fontStyle: FontStyle.italic)),
+                  
+                  const SizedBox(height: 8),
+                  Text(
+                    "Diajukan: ${DateFormat('dd MMM yyyy, HH:mm').format(klaim.createdAt)}",
+                    style: const TextStyle(fontSize: 10, color: Colors.grey),
+                  ),
+                ],
               ),
-            ],
-          )
-        ],
+            ),
+
+            const SizedBox(height: 16),
+
+            // BUTTONS
+            if (isActionable)
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => _handleReject(context, provider, klaim.id),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: errorRed,
+                        side: BorderSide(color: errorRed),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      ),
+                      child: const Text("Tolak"),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed: () {
+                        // Navigasi ke Halaman Bukti Pengembalian
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => FormBuktiPengembalianPage(klaim: klaim),
+                          ),
+                        );
+                      },
+                      icon: const Icon(Icons.check_circle_outline, size: 18, color: Colors.white),
+                      label: const Text("Terima", style: TextStyle(color: Colors.white)),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: darkNavy,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      ),
+                    ),
+                  ),
+                ],
+              )
+            else
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: Colors.grey[200],
+                  borderRadius: BorderRadius.circular(8)
+                ),
+                child: Text("Klaim telah diproses (${klaim.statusKlaim.replaceAll('_', ' ')})", 
+                  style: const TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),
+              )
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildImageThumb(String? url) {
+    if (url == null || url.isEmpty) {
+      return Container(
+        width: 60, height: 60,
+        decoration: BoxDecoration(color: Colors.grey[200], borderRadius: BorderRadius.circular(8)),
+        child: Icon(Icons.image_not_supported, color: Colors.grey[400]),
+      );
+    }
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(8),
+      child: Image.network(
+        url.startsWith('http') ? url : baseUrlImage + url,
+        width: 60, height: 60,
+        fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) => const Icon(Icons.broken_image),
       ),
     );
   }
 
   Widget _buildStatusBadge(String status) {
     Color color;
+    String text = status.replaceAll('_', ' ').toUpperCase();
+    
     switch (status) {
-      case 'diterima_pemilik': color = successGreen; break;
-      case 'ditolak_admin': color = errorRed; break;
-      default: color = Colors.orange;
+      case 'diterima_pemilik': 
+      case 'selesai':
+        color = successGreen; 
+        break;
+      case 'ditolak_admin': 
+      case 'ditolak':
+        color = errorRed; 
+        break;
+      default: 
+        color = Colors.orange;
     }
-    return Text(
-      status.replaceAll('_', ' ').toUpperCase(),
-      style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: color),
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(4),
+        border: Border.all(color: color.withOpacity(0.5))
+      ),
+      child: Text(text, style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: color)),
     );
   }
 
-  Future<void> _handleAction(BuildContext context, KlaimProvider provider, int id, String status) async {
-    bool success = await provider.updateStatus(id, status);
-    if(success) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Status berhasil diubah ke $status")));
-      provider.fetchAllKlaim(); // Refresh
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Gagal mengubah status"), backgroundColor: Colors.red));
+  Future<void> _handleReject(BuildContext context, KlaimProvider provider, int id) async {
+    // Tampilkan dialog konfirmasi tolak (opsional)
+    bool? confirm = await showDialog(
+      context: context, 
+      builder: (ctx) => AlertDialog(
+        title: const Text("Tolak Klaim?"),
+        content: const Text("Apakah Anda yakin ingin menolak klaim ini? Status akan berubah menjadi Ditolak."),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text("Batal")),
+          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text("Tolak", style: TextStyle(color: Colors.red))),
+        ],
+      )
+    );
+
+    if (confirm == true) {
+      bool success = await provider.updateStatus(id, 'ditolak_admin');
+      if (success) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Klaim ditolak.")));
+        provider.fetchAllKlaim();
+      } else {
+         if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Gagal update status.")));
+      }
     }
   }
 }

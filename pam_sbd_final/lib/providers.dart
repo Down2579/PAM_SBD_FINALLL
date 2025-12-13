@@ -299,10 +299,12 @@ class GeneralProvider with ChangeNotifier {
   final ApiService _apiService = ApiService();
 
   List<Kategori> _kategoriList = [];
+  bool _isLoading = false;
   List<Lokasi> _lokasiList = [];
   List<Notifikasi> _notifList = [];
 
   List<Kategori> get kategoriList => _kategoriList;
+  bool get isLoading => _isLoading;
   List<Lokasi> get lokasiList => _lokasiList;
   List<Notifikasi> get notifList => _notifList;
 
@@ -321,10 +323,25 @@ class GeneralProvider with ChangeNotifier {
   }
 
   // --- CRUD KATEGORI ---
+  Future<void> fetchKategori() async {
+    _isLoading = true;
+    notifyListeners();
 
-  Future<bool> addKategori(String nama) async {
     try {
-      final newItem = await _apiService.createKategori(nama);
+      final List<dynamic> data = await _apiService.getKategori();
+      _kategoriList = data.map((json) => Kategori.fromJson(json)).toList();
+    } catch (e) {
+      print("Error loading kategori: $e");
+      _kategoriList = [];
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<bool> addKategori(String nama, String deskripsi) async {
+    try {
+      final newItem = await _apiService.createKategori(nama, deskripsi);
       _kategoriList.add(Kategori.fromJson(newItem));
       notifyListeners();
       return true;
@@ -333,9 +350,9 @@ class GeneralProvider with ChangeNotifier {
     }
   }
 
-  Future<bool> editKategori(int id, String namaBaru) async {
+  Future<bool> editKategori(int id, String namaBaru, String deskripsi) async {
     try {
-      bool success = await _apiService.updateKategori(id, namaBaru);
+      bool success = await _apiService.updateKategori(id, namaBaru, deskripsi);
       if (success) {
         final index = _kategoriList.indexWhere((item) => item.id == id);
         if (index != -1) {
@@ -368,9 +385,9 @@ class GeneralProvider with ChangeNotifier {
 
   // --- CRUD LOKASI ---
 
-  Future<bool> addLokasi(String nama) async {
+  Future<bool> addLokasi(String nama, String deskripsi) async {
     try {
-      final newItem = await _apiService.createLokasi(nama);
+      final newItem = await _apiService.createLokasi(nama, deskripsi);
       _lokasiList.add(Lokasi.fromJson(newItem));
       notifyListeners();
       return true;
@@ -379,9 +396,9 @@ class GeneralProvider with ChangeNotifier {
     }
   }
 
-  Future<bool> editLokasi(int id, String namaBaru) async {
+  Future<bool> editLokasi(int id, String namaBaru, String deskripsi) async {
     try {
-      bool success = await _apiService.updateLokasi(id, namaBaru);
+      bool success = await _apiService.updateLokasi(id, namaBaru, deskripsi);
       if (success) {
         final index = _lokasiList.indexWhere((item) => item.id == id);
         if (index != -1) {

@@ -5,6 +5,7 @@ use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\BarangController;
 use App\Http\Controllers\Api\PengambilanController;
 use App\Http\Controllers\Api\BuktiPengambilanController;
+use App\Http\Controllers\Api\KlaimPenemuanController;
 use App\Http\Controllers\Api\NotifikasiController;
 use App\Http\Controllers\Api\KategoriController;
 use App\Http\Controllers\Api\LokasiController;
