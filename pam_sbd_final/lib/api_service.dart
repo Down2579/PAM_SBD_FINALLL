@@ -448,6 +448,37 @@ Future<List<dynamic>> getLokasi() async {
     return response.statusCode == 200;
   }
 
+// ===========================================================================
+  // PROFILE MANAGEMENT
+  // ===========================================================================
+
+  Future<bool> updateProfile(int userId, Map<String, dynamic> data) async {
+    // Sesuaikan endpoint backend Anda
+    final url = Uri.parse('$baseUrl/user/$userId'); 
+    final headers = await _getHeaders();
+
+    final response = await http.put(
+      url,
+      headers: headers,
+      body: jsonEncode(data),
+    );
+
+    if (response.statusCode == 200) {
+      // Update session user di lokal jika perlu
+      final prefs = await SharedPreferences.getInstance();
+      final responseBody = jsonDecode(response.body);
+      if (responseBody['data'] != null) {
+        // Simpan data terbaru ke shared_preferences
+        await prefs.setString('user', jsonEncode(responseBody['data']));
+      }
+      return true;
+    } else {
+      // Log error untuk debugging
+      print("Update Profile Failed: ${response.body}");
+      return false;
+    }
+  }
+  
   // NOTIFIKASI
   Future<List<dynamic>> getNotifikasi() async {
     final url = Uri.parse('$baseUrl/notifikasi');

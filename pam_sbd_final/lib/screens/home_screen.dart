@@ -4,7 +4,11 @@ import '../providers.dart';
 import '../models.dart';
 import 'detail_screen.dart';
 import 'all_items_screen.dart';
-import 'my_task_screen.dart'; // ✅ Pastikan file ini ada dan diimport
+
+// ✅ IMPORT HALAMAN LAINNYA
+import 'my_task_screen.dart'; 
+import 'completed_screen.dart'; 
+import 'profile_screen.dart'; 
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -38,18 +42,18 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // ✅ LIST HALAMAN UNTUK BOTTOM NAV
+    // ✅ DAFTAR HALAMAN UNTUK NAVIGASI BAWAH
     final List<Widget> pages = [
-      _buildDashboard(context), // Index 0: Home Dashboard
-      const MyTaskScreen(),     // Index 1: My Task Screen (Halaman User)
-      const Center(child: Text("Done Page")), // Index 2: Done (Placeholder)
-      const Center(child: Text("Profile Page")), // Index 3: Profile (Placeholder)
+      _buildDashboard(context),      // Index 0: Home Dashboard
+      const MyTaskScreen(),          // Index 1: Halaman My Task
+      const CompletedScreen(),       // Index 2: Halaman Completed/Done
+      const ProfileScreen(),         // Index 3: Halaman Profile
     ];
 
     return Scaffold(
       backgroundColor: bgPage,
       
-      // Menampilkan halaman sesuai index yang dipilih
+      // ✅ Menampilkan halaman sesuai index yang dipilih di BottomNavBar
       body: pages[_currentIndex],
       
       // BOTTOM NAVIGATION BAR
@@ -69,7 +73,7 @@ class _HomeScreenState extends State<HomeScreen> {
           showUnselectedLabels: false,
           items: const [
             BottomNavigationBarItem(icon: Icon(Icons.home_rounded, size: 28), label: "Home"),
-            BottomNavigationBarItem(icon: Icon(Icons.assignment_outlined, size: 28), label: "Task"), // ✅ Tombol My Task
+            BottomNavigationBarItem(icon: Icon(Icons.assignment_outlined, size: 28), label: "Task"),
             BottomNavigationBarItem(icon: Icon(Icons.check_circle_outline_rounded, size: 28), label: "Done"),
             BottomNavigationBarItem(icon: Icon(Icons.person_outline_rounded, size: 28), label: "Profile"),
           ],
@@ -78,7 +82,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // ================= DASHBOARD UTAMA (TAB 0) =================
+  // ================= DASHBOARD UTAMA (TAMPILAN HOME) =================
   Widget _buildDashboard(BuildContext context) {
     final user = Provider.of<AuthProvider>(context).currentUser;
 
@@ -121,11 +125,11 @@ class _HomeScreenState extends State<HomeScreen> {
             // 2. TOMBOL NAVIGASI (My Task & All)
             Row(
               children: [
-                // Tombol My Task (Shortcut ke Tab 1)
+                // Tombol My Task (Pindah ke Tab 1)
                 Expanded(
                   child: ElevatedButton(
                     onPressed: () {
-                      // ✅ Ubah index ke 1 (Tab My Task)
+                      // ✅ Ubah index ke 1 (Tab My Task) secara otomatis
                       setState(() {
                         _currentIndex = 1;
                       });
@@ -205,6 +209,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   );
                 }
 
+                // Ambil 5 barang terbaru saja untuk Home
                 final displayList = provider.listBarang.take(5).toList();
 
                 return ListView.builder(
