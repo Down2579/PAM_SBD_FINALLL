@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'providers.dart'; // Pastikan path ke file providers.dart benar
-import 'splash_screen.dart'; // Pastikan path ke splash screen benar
+import 'splash_screen.dart'; 
+import 'notification_provider.dart'; // Pastikan path ke splash screen benar
 
 void main() {
   runApp(const MyApp());
@@ -34,6 +35,8 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(
           create: (_) => GeneralProvider(),
         ),
+        ChangeNotifierProvider(
+          create: (_) => NotifikasiProvider()),
       ],
       child: MaterialApp(
         title: 'LostFound',

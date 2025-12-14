@@ -493,14 +493,31 @@ Future<List<dynamic>> getLokasi() async {
   }
   
   // NOTIFIKASI
-  Future<List<dynamic>> getNotifikasi() async {
+  Future<Map<String, dynamic>> getNotifikasi() async { 
     final url = Uri.parse('$baseUrl/notifikasi');
     final headers = await _getHeaders();
     final response = await http.get(url, headers: headers);
+
     if (response.statusCode == 200) {
-      return jsonDecode(response.body)['data'];
+      // Pastikan ini di-cast sebagai Map
+      return jsonDecode(response.body) as Map<String, dynamic>;
     } else {
-      throw Exception('Failed to load notifications');
+      throw Exception('Gagal memuat notifikasi');
     }
   }
+    Future<bool> markNotifRead(int id) async {
+    final url = Uri.parse('$baseUrl/notifikasi/$id/read');
+    final headers = await _getHeaders();
+    final response = await http.patch(url, headers: headers);
+    return response.statusCode == 200;
+  }
+  
+  // HAPUS SEMUA (Opsional)
+  Future<bool> clearAllNotif() async {
+    final url = Uri.parse('$baseUrl/notifikasi');
+    final headers = await _getHeaders();
+    final response = await http.delete(url, headers: headers);
+    return response.statusCode == 200;
+  }
+
 }

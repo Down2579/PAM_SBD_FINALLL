@@ -268,11 +268,15 @@ class _DetailScreenState extends State<DetailScreen> {
 
                   // 3. BARANG CLOSED
                   else if (item.status != 'open')
-                    _buildClosedStatusBox(item.status)
+                        if (item.status == 'selesai' && item.bukti.isNotEmpty)
+                      _buildProofSection(item.bukti.first)
+                    // Jika tidak (Proses Klaim atau Selesai tapi tanpa bukti/legacy) -> Tampilkan Box Biasa
+                    else
+                      _buildClosedStatusBox(item.status)
                   
                   // 4. FORM KLAIM
                   else if (showClaimForm)
-                    _buildClaimSection(context, item.id),
+                    _buildClaimSection(context, item),
 
                   const SizedBox(height: 50),
                 ],
@@ -335,7 +339,25 @@ class _DetailScreenState extends State<DetailScreen> {
   }
 
   // --- Widget Helper Lainnya (Copy paste dari sebelumnya) ---
-  Widget _buildClaimSection(BuildContext context, int barangId) {
+// --- 2. FORM KLAIM LENGKAP (Disesuaikan dengan Tipe Laporan) ---
+  Widget _buildClaimSection(BuildContext context, Barang item) {
+    // LOGIC TEKS DINAMIS
+    bool isItemLost = item.tipeLaporan == 'hilang';
+
+    // Jika Barang HILANG -> User adalah PENEMU -> Input Lokasi Penemuan
+    // Jika Barang DITEMUKAN -> User adalah PEMILIK -> Input Perkiraan Lokasi Hilang
+    String locationLabel = isItemLost ? "Lokasi Ditemukan" : "Perkiraan Lokasi Hilang";
+    String locationHint = isItemLost 
+        ? "Cth: Di bawah meja kantin, di parkiran..." 
+        : "Cth: Terakhir saya bawa di perpustakaan...";
+
+    // Jika Barang HILANG -> User jelaskan kondisi saat ketemu
+    // Jika Barang DITEMUKAN -> User sebutkan ciri khusus (bukti kepemilikan)
+    String descLabel = isItemLost ? "Kondisi Barang Saat Ditemukan" : "Ciri-ciri Khusus (Bukti Kepemilikan)";
+    String descHint = isItemLost 
+        ? "Cth: Masih bagus, ada lecet sedikit..." 
+        : "Cth: Ada stiker nama di bagian bawah, resleting macet...";
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -343,55 +365,89 @@ class _DetailScreenState extends State<DetailScreen> {
         const SizedBox(height: 16),
         Text("Ajukan Klaim", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: textDark)),
         const SizedBox(height: 4),
-        Text("Lengkapi formulir di bawah ini sebagai bukti valid.", style: TextStyle(color: textGrey, fontSize: 13)),
+        
+        // Subtitle juga dinamis
+        Text(
+          isItemLost 
+            ? "Bantu pemilik mendapatkan kembali barangnya."
+            : "Buktikan bahwa barang temuan ini adalah milik Anda.", 
+          style: TextStyle(color: textGrey, fontSize: 13)
+        ),
+        
         const SizedBox(height: 20),
         
+        // INPUT 1: LOKASI (Label Dinamis)
         TextField(
           controller: _lokasiController,
           decoration: InputDecoration(
-            labelText: "Lokasi Ditemukan",
-            hintText: "Cth: Di kantin meja nomor 5",
-            filled: true, fillColor: Colors.white,
+            labelText: locationLabel, // <--- Dinamis
+            hintText: locationHint,   // <--- Dinamis
+            filled: true,
+            fillColor: Colors.white,
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
             prefixIcon: const Icon(Icons.pin_drop_outlined)
           ),
         ),
         const SizedBox(height: 16),
 
+        // INPUT 2: DESKRIPSI (Label Dinamis)
         TextField(
           controller: _pesanController,
           maxLines: 3,
           decoration: InputDecoration(
-            labelText: "Deskripsi / Ciri Khusus",
-            hintText: "Cth: Ada gantungan kunci beruang...",
-            filled: true, fillColor: Colors.white,
+            labelText: descLabel,     // <--- Dinamis
+            hintText: descHint,       // <--- Dinamis
+            filled: true,
+            fillColor: Colors.white,
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
             prefixIcon: const Icon(Icons.description_outlined)
           ),
         ),
         const SizedBox(height: 16),
 
+        // INPUT 3: FOTO BUKTI
         GestureDetector(
           onTap: _pickImage,
           child: Container(
-            height: 150, width: double.infinity,
+            height: 150,
+            width: double.infinity,
             decoration: BoxDecoration(
-              color: Colors.white, borderRadius: BorderRadius.circular(12),
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
               border: Border.all(color: Colors.grey.shade400, style: BorderStyle.solid),
-              image: _imageFile != null ? DecorationImage(image: FileImage(_imageFile!), fit: BoxFit.cover) : null
+              image: _imageFile != null 
+                  ? DecorationImage(image: FileImage(_imageFile!), fit: BoxFit.cover)
+                  : null
             ),
             child: _imageFile == null 
-              ? Column(mainAxisAlignment: MainAxisAlignment.center, children: [Icon(Icons.add_a_photo_outlined, color: textGrey, size: 32), const SizedBox(height: 8), Text("Upload Foto Bukti (Opsional)", style: TextStyle(color: textGrey, fontWeight: FontWeight.w600))])
+              ? Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.add_a_photo_outlined, color: textGrey, size: 32),
+                    const SizedBox(height: 8),
+                    // Teks Foto juga bisa disesuaikan
+                    Text(
+                      isItemLost ? "Foto Barang (Saat Ditemukan)" : "Foto Bukti Kepemilikan (Opsional)", 
+                      style: TextStyle(color: textGrey, fontWeight: FontWeight.w600)
+                    ),
+                  ],
+                )
               : null,
           ),
         ),
+        
         const SizedBox(height: 24),
 
         SizedBox(
-          width: double.infinity, height: 54,
+          width: double.infinity,
+          height: 54,
           child: ElevatedButton(
-            onPressed: () => _submitClaim(context, barangId),
-            style: ElevatedButton.styleFrom(backgroundColor: darkNavy, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)), elevation: 4),
+            onPressed: () => _submitClaim(context, item.id),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: darkNavy,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              elevation: 4,
+            ),
             child: const Text("Kirim Klaim", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)),
           ),
         )
@@ -417,6 +473,106 @@ class _DetailScreenState extends State<DetailScreen> {
     } else {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: const Text("Gagal mengajukan klaim."), backgroundColor: errorRed));
     }
+  }
+
+  // WIDGET BARU: Menampilkan Bukti Pengambilan (Foto & Catatan Admin)
+  Widget _buildProofSection(BuktiPengambilan bukti) {
+    // Handle URL Foto Bukti
+    String? proofImageUrl;
+    if (bukti.fotoBukti.isNotEmpty) {
+      proofImageUrl = bukti.fotoBukti.startsWith('http') 
+          ? bukti.fotoBukti 
+          : '$baseUrlImage${bukti.fotoBukti}';
+    }
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: successGreen.withOpacity(0.3)),
+        boxShadow: [
+          BoxShadow(
+            color: successGreen.withOpacity(0.05),
+            blurRadius: 15,
+            offset: const Offset(0, 4),
+          )
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(color: successGreen.withOpacity(0.1), shape: BoxShape.circle),
+                child: Icon(Icons.check_circle, color: successGreen, size: 24),
+              ),
+              const SizedBox(width: 12),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text("Barang Telah Selesai", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: darkNavy)),
+                  Text(
+                    "Diselesaikan pada: ${DateFormat('dd MMM yyyy, HH:mm').format(bukti.tanggalPengambilan)}",
+                    style: TextStyle(fontSize: 11, color: textGrey),
+                  ),
+                ],
+              )
+            ],
+          ),
+          
+          const Divider(height: 24),
+          
+          // Foto Bukti
+          Text("Bukti Serah Terima:", style: TextStyle(fontWeight: FontWeight.w600, color: textDark, fontSize: 13)),
+          const SizedBox(height: 8),
+          GestureDetector(
+            onTap: () {
+              if (proofImageUrl != null) {
+                Navigator.push(context, MaterialPageRoute(builder: (_) => FullScreenImagePage(imageUrl: proofImageUrl!)));
+              }
+            },
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: Container(
+                height: 180,
+                width: double.infinity,
+                color: bgPage,
+                child: proofImageUrl != null
+                    ? Image.network(
+                        proofImageUrl, 
+                        fit: BoxFit.cover,
+                        errorBuilder: (ctx, err, _) => const Center(child: Icon(Icons.broken_image, color: Colors.grey)),
+                      )
+                    : const Center(child: Text("Tidak ada foto bukti", style: TextStyle(color: Colors.grey))),
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 16),
+
+          // Catatan Admin
+          Text("Catatan Admin:", style: TextStyle(fontWeight: FontWeight.w600, color: textDark, fontSize: 13)),
+          const SizedBox(height: 4),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: bgPage,
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Text(
+              (bukti.catatan != null && bukti.catatan!.isNotEmpty) ? bukti.catatan! : "Tidak ada catatan tambahan.",
+              style: TextStyle(color: textDark.withOpacity(0.8), fontSize: 13, height: 1.5),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _buildCategoryChip(String label) {

@@ -7,18 +7,24 @@ import '../providers.dart';
 import 'detail_screen.dart';
 
 class AllItemsScreen extends StatefulWidget {
-  final String filterType; // 'Lost', 'Found', atau 'All' (default)
+    final String filterType;
+  final String? searchQuery; // ← TAMBAHKAN INI
 
-  const AllItemsScreen({super.key, this.filterType = 'All'});
+  const AllItemsScreen({
+    super.key,
+    this.filterType = 'All',
+    this.searchQuery, // ← TAMBAHKAN INI
+  });
 
   @override
   State<AllItemsScreen> createState() => _AllItemsScreenState();
 }
 
+
 class _AllItemsScreenState extends State<AllItemsScreen> {
   DateTime? _selectedDate;
 
-  // ================= COLORS PALETTE (SAMA DENGAN HOME) =================
+  // ================= COLORS PALETTE (KONSISTEN) =================
   final Color bgPage = const Color(0xFFF5F7FA);
   final Color darkNavy = const Color(0xFF2B4263);
   final Color textDark = const Color(0xFF1F2937);
@@ -27,19 +33,18 @@ class _AllItemsScreenState extends State<AllItemsScreen> {
   final Color warningOrange = const Color(0xFFF59E0B);
   final Color errorRed = const Color(0xFFEF4444);
 
-  // Base URL Image (Sesuaikan IP)
+  // Base URL Image
   final String baseUrlImage = 'http://10.0.2.2:8000';
 
   @override
   void initState() {
     super.initState();
-    // Pastikan data fresh saat masuk halaman ini
     Future.microtask(() => 
       Provider.of<BarangProvider>(context, listen: false).fetchBarang(refresh: true)
     );
   }
 
-  // Logic Date Picker (Max 3 bulan ke belakang, tidak boleh besok)
+  // Logic Date Picker (TETAP SAMA)
   Future<void> _pickDate(BuildContext context) async {
     final DateTime now = DateTime.now();
     final DateTime threeMonthsAgo = now.subtract(const Duration(days: 90));
@@ -47,8 +52,8 @@ class _AllItemsScreenState extends State<AllItemsScreen> {
     final DateTime? picked = await showDatePicker(
       context: context,
       initialDate: _selectedDate ?? now,
-      firstDate: threeMonthsAgo, // Max 3 bulan ke belakang
-      lastDate: now,             // Tidak boleh besok
+      firstDate: threeMonthsAgo,
+      lastDate: now,
       builder: (context, child) {
         return Theme(
           data: Theme.of(context).copyWith(
@@ -70,41 +75,41 @@ class _AllItemsScreenState extends State<AllItemsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Ambil user dari AuthProvider
     final user = Provider.of<AuthProvider>(context).currentUser;
 
     return Scaffold(
       backgroundColor: bgPage,
+      // 1. APP BAR KONSISTEN
       appBar: AppBar(
         backgroundColor: bgPage,
         elevation: 0,
+        centerTitle: true,
         leading: GestureDetector(
           onTap: () => Navigator.pop(context),
           child: Container(
-            margin: const EdgeInsets.all(10),
+            margin: const EdgeInsets.all(12),
             decoration: BoxDecoration(
               color: Colors.white,
               shape: BoxShape.circle,
-              boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 5)]
+              boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10)]
             ),
             child: Icon(Icons.arrow_back_ios_new_rounded, color: textDark, size: 18),
           ),
         ),
         title: Text(
           widget.filterType == 'All' ? "All Items" : "${widget.filterType} Items",
-          style: TextStyle(color: textDark, fontWeight: FontWeight.bold),
+          style: TextStyle(color: textDark, fontWeight: FontWeight.bold, fontSize: 18),
         ),
-        centerTitle: true,
       ),
       body: Column(
         children: [
-          // 1. HEADER & FILTER SECTION
+          // 2. HEADER & FILTER SECTION
           Container(
             padding: const EdgeInsets.fromLTRB(24, 10, 24, 20),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Welcome Text
+                // Welcome Text Style Konsisten
                 Text(
                   "Hello, ${user?.namaLengkap ?? 'User'}!",
                   style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: darkNavy),
@@ -115,15 +120,15 @@ class _AllItemsScreenState extends State<AllItemsScreen> {
                   style: TextStyle(fontSize: 14, color: textGrey),
                 ),
                 
-                const SizedBox(height: 20),
+                const SizedBox(height: 24),
 
-                // Date Filter Row
+                // Date Filter Row (Style Baru)
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text("Filter by Date", style: TextStyle(fontWeight: FontWeight.w600, color: textDark, fontSize: 16)),
+                    Text("Filter by Date:", style: TextStyle(fontWeight: FontWeight.w600, color: textDark, fontSize: 15)),
                     
-                    // Date Button
+                    // Date Button (Pill Style - Konsisten dengan MyTask)
                     InkWell(
                       onTap: () => _pickDate(context),
                       borderRadius: BorderRadius.circular(30),
@@ -162,7 +167,7 @@ class _AllItemsScreenState extends State<AllItemsScreen> {
             ),
           ),
 
-          // 2. LIST ITEMS
+          // 3. LIST ITEMS
           Expanded(
             child: Consumer<BarangProvider>(
               builder: (context, provider, _) {
@@ -170,24 +175,20 @@ class _AllItemsScreenState extends State<AllItemsScreen> {
                   return Center(child: CircularProgressIndicator(color: darkNavy));
                 }
 
-                // --- FILTER LOGIC ---
+                // --- LOGIC FILTER (TETAP SAMA) ---
                 List<Barang> filteredList = provider.listBarang.where((item) {
-                  // 1. Filter by Type (Lost/Found/All)
                   bool typeMatch = true;
                   if (widget.filterType == 'Lost') typeMatch = item.tipeLaporan == 'hilang';
                   if (widget.filterType == 'Found') typeMatch = item.tipeLaporan == 'ditemukan';
 
-                  // 2. Filter by Date (If selected)
                   bool dateMatch = true;
                   if (_selectedDate != null && item.createdAt != null) {
-                    // Menggunakan createdAt sebagai patokan tanggal
                     dateMatch = DateUtils.isSameDay(item.createdAt, _selectedDate!);
                   }
 
                   return typeMatch && dateMatch;
                 }).toList();
 
-                // Sort by Latest
                 filteredList.sort((a, b) => b.createdAt.compareTo(a.createdAt));
 
                 if (filteredList.isEmpty) {
@@ -203,9 +204,10 @@ class _AllItemsScreenState extends State<AllItemsScreen> {
                   );
                 }
 
-                return ListView.builder(
+                return ListView.separated(
                   padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
                   itemCount: filteredList.length,
+                  separatorBuilder: (ctx, i) => const SizedBox(height: 16), // Jarak antar card
                   itemBuilder: (context, index) {
                     return _buildItemCard(filteredList[index]);
                   },
@@ -218,21 +220,23 @@ class _AllItemsScreenState extends State<AllItemsScreen> {
     );
   }
 
-  // ================= ITEM CARD (SAMA PERSIS DENGAN HOME) =================
+  // ================= ITEM CARD (UI DIPERBAIKI) =================
   Widget _buildItemCard(Barang item) {
     bool isLost = item.tipeLaporan == 'hilang';
     String statusText = isLost ? "Lost!!" : "Found!!";
+    
+    // Warna Tag Status
+    Color tagColor = isLost ? warningOrange.withOpacity(0.1) : successGreen.withOpacity(0.1);
+    Color tagTextColor = isLost ? warningOrange : successGreen;
 
     return GestureDetector(
       onTap: () {
-        // Navigasi ke Detail
         Navigator.push(
           context, 
           MaterialPageRoute(builder: (context) => DetailScreen(item: item))
         );
       },
       child: Container(
-        margin: const EdgeInsets.only(bottom: 16),
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
           color: Colors.white,
@@ -243,10 +247,10 @@ class _AllItemsScreenState extends State<AllItemsScreen> {
         ),
         child: Row(
           children: [
-            // 1. FOTO BARANG (KIRI)
+            // 1. FOTO BARANG (KIRI) - Konsisten 70x80
             Container(
               width: 70,
-              height: 70,
+              height: 80,
               decoration: BoxDecoration(
                 color: darkNavy,
                 borderRadius: BorderRadius.circular(16),
@@ -273,7 +277,7 @@ class _AllItemsScreenState extends State<AllItemsScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Judul Status (Lost!! / Found!!)
+                  // Status & Tag
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
@@ -285,24 +289,27 @@ class _AllItemsScreenState extends State<AllItemsScreen> {
                           color: textDark,
                         ),
                       ),
-                      // Badge Status Proses (Optional)
-                      if(item.status != 'open')
+                      // Badge Kategori Kecil (Opsional - Pemanis UI)
+                      if (item.kategori?.namaKategori != null)
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                          decoration: BoxDecoration(color: Colors.grey[100], borderRadius: BorderRadius.circular(4)),
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: bgPage,
+                            borderRadius: BorderRadius.circular(6)
+                          ),
                           child: Text(
-                            item.status.toUpperCase(), 
-                            style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: textGrey)
+                            item.kategori!.namaKategori,
+                            style: TextStyle(fontSize: 10, color: textGrey, fontWeight: FontWeight.bold),
                           ),
                         )
                     ],
                   ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 6),
                   
-                  // Nama Barang
+                  // Nama Barang (Row dengan Icon)
                   Row(
                     children: [
-                      Icon(Icons.layers_outlined, size: 16, color: textDark),
+                      Icon(Icons.inventory_2_outlined, size: 16, color: textDark),
                       const SizedBox(width: 6),
                       Expanded(
                         child: Text(
@@ -316,15 +323,15 @@ class _AllItemsScreenState extends State<AllItemsScreen> {
                   
                   const SizedBox(height: 4),
 
-                  // Lokasi
+                  // Lokasi (Row dengan Icon)
                   Row(
                     children: [
-                      Icon(Icons.location_on_outlined, size: 16, color: textDark),
+                      Icon(Icons.location_on_outlined, size: 16, color: textGrey),
                       const SizedBox(width: 6),
                       Expanded(
                         child: Text(
                           item.lokasi?.namaLokasi ?? "Lokasi tidak diketahui",
-                          style: TextStyle(fontSize: 13, color: textDark),
+                          style: TextStyle(fontSize: 12, color: textGrey),
                           maxLines: 1, overflow: TextOverflow.ellipsis,
                         ),
                       ),
@@ -333,6 +340,10 @@ class _AllItemsScreenState extends State<AllItemsScreen> {
                 ],
               ),
             ),
+            
+            // Panah Kecil (Pemanis UI)
+            const SizedBox(width: 8),
+            Icon(Icons.arrow_forward_ios_rounded, size: 14, color: Colors.grey[300]),
           ],
         ),
       ),

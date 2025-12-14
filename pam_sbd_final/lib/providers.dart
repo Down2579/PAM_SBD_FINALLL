@@ -484,11 +484,16 @@ class GeneralProvider with ChangeNotifier {
 
   Future<void> loadNotifikasi() async {
     try {
-      final List<dynamic> n = await _apiService.getNotifikasi();
-      _notifList = n.map((e) => Notifikasi.fromJson(e)).toList();
+      // API sekarang return Map {'data': [], 'unread_count': 0}
+      final Map<String, dynamic> res = await _apiService.getNotifikasi();
+      
+      if (res['data'] != null) {
+        final List<dynamic> n = res['data']; // Ambil list dari key 'data'
+        _notifList = n.map((e) => Notifikasi.fromJson(e)).toList();
+      }
       notifyListeners();
     } catch (e) {
-      print("Error loading notif: $e");
+      print("Error loading notif in GeneralProvider: $e");
     }
   }
 }

@@ -83,24 +83,6 @@ class CreateLostfoundSchema extends Migration
             $table->timestampsTz();
         });
 
-        // PENGAMBILAN (SESUDAH KLAIM DITERIMA)
-        Schema::create('pengambilan', function (Blueprint $table) {
-            $table->id();
-
-            $table->foreignId('id_klaim')->constrained('klaim_penemuan')->onDelete('cascade');
-
-            $table->foreignId('id_pemilik')->constrained('users')->onDelete('cascade');
-            $table->foreignId('id_penemu')->constrained('users')->onDelete('cascade');
-
-            $table->string('lokasi_pengambilan')->nullable();
-            $table->timestampTz('tanggal_pengambilan')->nullable();
-            $table->text('catatan')->nullable();
-
-            $table->enum('status_pengambilan', ['menunggu','selesai'])->default('menunggu');
-
-            $table->timestampsTz();
-        });
-
         // FOTO BARANG
         Schema::create('foto_barang', function (Blueprint $table) {
             $table->id();

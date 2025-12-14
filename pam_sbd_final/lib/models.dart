@@ -114,6 +114,9 @@ class Barang {
   final Kategori? kategori;
   final Lokasi? lokasi;
   final List<FotoBarang> fotoLain;
+  
+  // ✅ TAMBAHAN: Untuk menampung data bukti penyelesaian
+  final List<BuktiPengambilan> bukti; 
 
   Barang({
     required this.id,
@@ -129,11 +132,18 @@ class Barang {
     this.kategori,
     this.lokasi,
     this.fotoLain = const [],
+    this.bukti = const [], // ✅ Default kosong
   });
 
   factory Barang.fromJson(Map<String, dynamic> json) {
+    // 1. Parsing Foto Lain
     var listFoto = json['foto'] as List? ?? [];
     List<FotoBarang> fotoList = listFoto.map((i) => FotoBarang.fromJson(i)).toList();
+
+    // ✅ 2. Parsing Bukti Pengambilan (TAMBAHAN)
+    // Pastikan backend mengirim key 'bukti' (via ->load('bukti'))
+    var listBukti = json['bukti'] as List? ?? [];
+    List<BuktiPengambilan> buktiList = listBukti.map((i) => BuktiPengambilan.fromJson(i)).toList();
 
     return Barang(
       id: json['id'],
@@ -151,26 +161,27 @@ class Barang {
       
       createdAt: DateTime.tryParse(json['created_at'].toString()) ?? DateTime.now(),
       
-      // 1. Handle Pelapor
+      // Handle Pelapor
       pelapor: json['pelapor'] is Map<String, dynamic> 
           ? User.fromJson(json['pelapor']) 
           : null,
 
-      // 2. Handle Kategori (Bisa String "Elektronik" atau Map {"id":1...})
+      // Handle Kategori
       kategori: json['kategori'] is Map<String, dynamic>
           ? Kategori.fromJson(json['kategori'])
           : (json['kategori'] is String 
-              ? Kategori(id: 0, namaKategori: json['kategori']) // Buat object dummy dari String
+              ? Kategori(id: 0, namaKategori: json['kategori']) 
               : null),
 
-      // 3. Handle Lokasi (Bisa String "Gedung A" atau Map {"id":1...})
+      // Handle Lokasi
       lokasi: json['lokasi'] is Map<String, dynamic>
           ? Lokasi.fromJson(json['lokasi'])
           : (json['lokasi'] is String 
-              ? Lokasi(id: 0, namaLokasi: json['lokasi']) // Buat object dummy dari String
+              ? Lokasi(id: 0, namaLokasi: json['lokasi']) 
               : null),
 
       fotoLain: fotoList,
+      bukti: buktiList, // ✅ Masukkan ke object
     );
   }
 }

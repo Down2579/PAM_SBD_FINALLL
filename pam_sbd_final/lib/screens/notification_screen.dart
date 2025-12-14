@@ -1,201 +1,116 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart'; // DITAMBAHKAN
-import '../notification_provider.dart'; // DITAMBAHKAN
-import 'home_screen.dart';
-import 'my_task_screen.dart';
-import 'completed_screen.dart';
-import 'profile_screen.dart';
-import 'help_center_screen.dart'; // Ditambahkan untuk navigasi dari ikon lonceng
+import 'package:provider/provider.dart';
+import 'package:intl/intl.dart';
+import '../../notification_provider.dart'; 
+import '../models.dart';
 
 class NotificationScreen extends StatefulWidget {
+  const NotificationScreen({super.key});
+
   @override
-  _NotificationScreenState createState() => _NotificationScreenState();
+  State<NotificationScreen> createState() => _NotificationScreenState();
 }
 
 class _NotificationScreenState extends State<NotificationScreen> {
-  // --- Data Dummy ---
-  final List<String> notifications = [
-    "Your account is create !",
-    "New lost item, check it now!",
-    "Your new post has been created",
-  ];
-
-  // --- Palet Warna ---
-  final Color darkNavy = const Color(0xFF1e293b);
-  final Color accentBlue = const Color(0xFF3b82f6);
-  final Color primaryPurple = const Color(0xFF7c3aed);
-  final Color textDark = const Color(0xFF1F2937);
-  final Color bubbleColor = const Color(0xFFE8EEF5); // Warna bubble/kartu notifikasi
-
   @override
   void initState() {
     super.initState();
-    // ### MODIFIKASI: Reset notifikasi saat halaman dibuka ###
-    // Menggunakan addPostFrameCallback agar reset terjadi setelah build selesai
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      Provider.of<NotificationProvider>(context, listen: false).reset();
-    });
+    // Ambil data saat halaman dibuka
+    Future.microtask(() => 
+      Provider.of<NotifikasiProvider>(context, listen: false).fetchNotifikasi()
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
-
-      // ================= 1. APP BAR (DIMODIFIKASI) =================
+      backgroundColor: const Color(0xFFF5F7FA),
       appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 1.0,
-        // Tombol kembali otomatis
-        leading: BackButton(color: textDark),
-        // Tidak ada judul (title)
+        title: const Text("Notifikasi", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+        backgroundColor: const Color(0xFF2B4263),
+        iconTheme: const IconThemeData(color: Colors.white),
         actions: [
-          // ### MODIFIKASI: Ikon notif di sini juga menggunakan Consumer ###
-          Consumer<NotificationProvider>(
-            builder: (context, notificationProvider, child) {
-              return Stack(
-                alignment: Alignment.center,
-                children: [
-                  IconButton(
-                    icon: Icon(Icons.notifications_none_outlined, color: textDark, size: 28),
-                    onPressed: () {
-                      // Jika pengguna ada di halaman Help Center (notif), tidak perlu navigasi lagi
-                      // Atau bisa diarahkan ke halaman lain jika perlu
-                    },
-                  ),
-                  if (notificationProvider.unreadCount > 0)
-                    Positioned(
-                      right: 8,
-                      top: 8,
-                      child: Container(
-                        padding: EdgeInsets.all(2),
-                        decoration: BoxDecoration(
-                          color: Colors.red,
-                          borderRadius: BorderRadius.circular(10),
-                          border: Border.all(color: Colors.white, width: 1.5)
-                        ),
-                        constraints: BoxConstraints(minWidth: 18, minHeight: 18),
-                        child: Center(
-                          child: Text(
-                            '${notificationProvider.unreadCount}',
-                            style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
-                            textAlign: TextAlign.center,
-                          ),
-                        ),
-                      ),
-                    ),
-                ],
-              );
+          IconButton(
+            icon: const Icon(Icons.delete_sweep),
+            onPressed: () {
+               Provider.of<NotifikasiProvider>(context, listen: false).clearAll();
             },
-          ),
-          const SizedBox(width: 8), // Memberi sedikit jarak di kanan
+            tooltip: "Bersihkan Semua",
+          )
         ],
       ),
+      body: Consumer<NotifikasiProvider>(
+        builder: (context, provider, child) {
+          if (provider.isLoading) {
+            return const Center(child: CircularProgressIndicator());
+          }
 
-      // ================= 2. BODY KONTEN UTAMA =================
-      body: ListView(
-        padding: const EdgeInsets.all(24.0),
-        children: [
-          _buildHeader(),
-          const SizedBox(height: 30),
-          Column(
-            children: notifications.map((text) => NotificationBubble(text: text)).toList(),
-          ),
-        ],
-      ),
+          if (provider.listNotif.isEmpty) {
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.notifications_off_outlined, size: 80, color: Colors.grey[300]),
+                  const SizedBox(height: 16),
+                  Text("Tidak ada notifikasi", style: TextStyle(color: Colors.grey[500])),
+                ],
+              ),
+            );
+          }
 
-      // ================= 3. BOTTOM NAVIGATION BAR =================
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: 0, // Default ke Home saat di halaman ini
-        onTap: (index) {
-          if (index == 0) Navigator.pushAndRemoveUntil(context, MaterialPageRoute(builder: (_) => HomeScreen()), (route) => false);
-          else if (index == 1) Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => MyTaskScreen()));
-          else if (index == 2) Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => CompletedScreen()));
-          else if (index == 3) Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => ProfileScreen()));
+          return ListView.builder(
+            itemCount: provider.listNotif.length,
+            itemBuilder: (context, index) {
+              final notif = provider.listNotif[index];
+              return _buildNotifItem(notif, provider);
+            },
+          );
         },
-        type: BottomNavigationBarType.fixed,
-        backgroundColor: Colors.white,
-        selectedItemColor: darkNavy,
-        unselectedItemColor: Colors.grey,
-        showSelectedLabels: false,
-        showUnselectedLabels: false,
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.home_outlined), label: "Home"),
-          BottomNavigationBarItem(icon: Icon(Icons.assignment_outlined), label: "Task"),
-          BottomNavigationBarItem(icon: Icon(Icons.check_circle_outline), label: "Completed"),
-          BottomNavigationBarItem(icon: Icon(Icons.person_outlined), label: "Profile"),
-        ],
       ),
     );
   }
 
-  // --- WIDGET HELPER: Header Judul ---
-  Widget _buildHeader() {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: [
-        SizedBox(
-          height: 60,
-          width: 60,
-          child: Image.asset(
-            'assets/images/logo.png',
-            errorBuilder: (context, error, stackTrace) {
-              return Icon(Icons.inventory_2_outlined, size: 48, color: darkNavy);
-            },
+  Widget _buildNotifItem(Notifikasi notif, NotifikasiProvider provider) {
+    // Style beda jika belum dibaca
+    final bool isUnread = !notif.sudahDibaca;
+    final Color bgColor = isUnread ? Colors.blue.withOpacity(0.05) : Colors.white;
+    final FontWeight fontWeight = isUnread ? FontWeight.bold : FontWeight.normal;
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 1), // Garis pemisah tipis
+      color: bgColor,
+      child: ListTile(
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        onTap: () {
+          provider.markAsRead(notif.id);
+          // Disini bisa tambah navigasi ke DetailScreen jika perlu
+        },
+        leading: CircleAvatar(
+          backgroundColor: isUnread ? Colors.blue : Colors.grey[300],
+          child: Icon(
+            Icons.notifications, 
+            color: isUnread ? Colors.white : Colors.grey[600]
           ),
         ),
-        const SizedBox(width: 16),
-        Column(
+        title: Text(
+          notif.judul,
+          style: TextStyle(fontWeight: fontWeight, fontSize: 15),
+        ),
+        subtitle: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              "Notification",
-              style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold, color: textDark),
-            ),
             const SizedBox(height: 4),
+            Text(notif.pesan, style: const TextStyle(fontSize: 13, color: Colors.black87)),
+            const SizedBox(height: 6),
             Text(
-              "Something looking for you",
-              style: TextStyle(color: darkNavy, fontSize: 14, fontWeight: FontWeight.w600),
+              DateFormat('dd MMM yyyy, HH:mm').format(notif.createdAt),
+              style: TextStyle(fontSize: 11, color: Colors.grey[500]),
             ),
           ],
-        )
-      ],
-    );
-  }
-}
-
-// ================= WIDGET KUSTOM UNTUK BUBBLE (DIMODIFIKASI) =================
-class NotificationBubble extends StatelessWidget {
-  final String text;
-
-  const NotificationBubble({Key? key, required this.text}) : super(key: key);
-
-  @override
-  Widget build(BuildContext context) {
-    // ### MODIFIKASI: Menggunakan Container biasa, bukan ClipPath ###
-    return Container(
-      width: double.infinity,
-      margin: const EdgeInsets.only(bottom: 20.0),
-      padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 24),
-      decoration: BoxDecoration(
-        color: const Color(0xFFE8E8E8),
-        borderRadius: BorderRadius.circular(16), // Menggunakan border radius
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.08),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Text(
-        text,
-        textAlign: TextAlign.center,
-        style: TextStyle(
-          fontSize: 15,
-          fontWeight: FontWeight.w600,
-          color: const Color(0xFF1F1F1F),
         ),
+        trailing: isUnread 
+            ? const Icon(Icons.circle, size: 10, color: Colors.blue) 
+            : null,
       ),
     );
   }

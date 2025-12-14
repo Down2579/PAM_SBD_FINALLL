@@ -41,6 +41,7 @@ class BarangController extends Controller
             // 2. ATAU melihat barang miliknya sendiri (walau pending/proses)
             $q->where(function ($query) use ($user) {
                 $query->where('status', 'open')
+                      ->orWhere('status', 'selesai')
                       ->orWhere('id_pelapor', $user->id);
             });
 
