@@ -44,7 +44,7 @@ class CreateLostfoundSchema extends Migration
             $table->string('gambar_url')->nullable();
 
             $table->enum('tipe_laporan', ['hilang','ditemukan']);
-            $table->enum('status', ['open','proses_klaim','selesai'])->default('open');
+            $table->enum('status', ['pending', 'open','proses_klaim','selesai'])->default('open');
 
             $table->enum('status_verifikasi', [
                 'belum_diverifikasi',

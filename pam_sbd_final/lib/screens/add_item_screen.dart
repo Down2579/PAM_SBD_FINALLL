@@ -215,45 +215,53 @@ class _AddItemScreenState extends State<AddItemScreen> {
 
   // ================= LOGIC METHODS =================
 
-  Future<void> _handleSubmit() async {
-    // 1. Validasi Manual (Selain required field)
+Future<void> _handleSubmit() async {
+    // ... (Validasi awal tetap sama) ...
     if (_nameController.text.isEmpty || 
         _selectedCategoryId == null || 
         _selectedLocationId == null ||
         _selectedReportType == null ||
         _selectedDate == null ||
         _descController.text.isEmpty) {
-      
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Please fill all fields"), backgroundColor: Colors.red),
+        const SnackBar(content: Text("Mohon lengkapi semua data"), backgroundColor: Colors.red),
       );
       return;
     }
 
-    // 2. Prepare Data Map (Sesuai API Service)
+    // ... (Data Map tetap sama) ...
     final Map<String, String> data = {
       'nama_barang': _nameController.text,
       'deskripsi': _descController.text,
-      'tipe_laporan': _selectedReportType!, // 'hilang' | 'ditemukan'
+      'tipe_laporan': _selectedReportType!, 
       'id_kategori': _selectedCategoryId.toString(),
       'id_lokasi': _selectedLocationId.toString(),
       'tanggal_kejadian': DateFormat('yyyy-MM-dd').format(_selectedDate!),
-      // Status & Status Verifikasi dihandle default oleh Backend
     };
 
-    // 3. Panggil Provider
+    // Panggil Provider
+    // Pastikan provider mengirimkan image jika ada
     final success = await Provider.of<BarangProvider>(context, listen: false)
-        .addBarang(data, _selectedImage, null); // null untuk foto tambahan (jika belum ada fitur multiple)
+        .addBarang(data, _selectedImage, null); 
 
     if (success && mounted) {
+      // 1. UPDATE PESAN AGAR LEBIH INFORMATIF
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Report submitted successfully!"), backgroundColor: Colors.green),
+        const SnackBar(
+          content: Text("Laporan berhasil dikirim! Cek menu 'My Task' untuk memantau status verifikasi."), 
+          backgroundColor: Colors.green,
+          duration: Duration(seconds: 3),
+        ),
       );
-      Navigator.pop(context); // Kembali ke Home/My Task
+      
+      // 2. KIRIM 'true' SAAT KEMBALI
+      // Ini memberitahu halaman sebelumnya untuk refresh list
+      Navigator.pop(context, true); 
+      
     } else if (mounted) {
       final msg = Provider.of<BarangProvider>(context, listen: false).errorMessage;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(msg ?? "Failed to submit"), backgroundColor: Colors.red),
+        SnackBar(content: Text(msg ?? "Gagal mengirim laporan"), backgroundColor: Colors.red),
       );
     }
   }

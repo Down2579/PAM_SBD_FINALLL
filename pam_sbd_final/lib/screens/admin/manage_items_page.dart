@@ -19,14 +19,14 @@ class _ManageItemsPageState extends State<ManageItemsPage> {
   final Color errorRed = const Color(0xFFEF4444);
   final Color successGreen = const Color(0xFF10B981);
   final Color warningOrange = const Color(0xFFF59E0B);
+  final Color verifyPurple = const Color(0xFF8B5CF6); // Warna baru untuk Verifikasi
 
-  // URL Base untuk gambar (sesuaikan jika perlu)
+  // URL Base (Sesuaikan)
   final String baseUrlImage = 'http://10.0.2.2:8000'; 
 
   @override
   void initState() {
     super.initState();
-    // Fetch data saat halaman dibuka
     WidgetsBinding.instance.addPostFrameCallback((_) {
       Provider.of<BarangProvider>(context, listen: false).fetchBarang(refresh: true);
     });
@@ -36,7 +36,6 @@ class _ManageItemsPageState extends State<ManageItemsPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: bgPage,
-      // 1. HEADER KONSISTEN (APP BAR)
       appBar: AppBar(
         backgroundColor: darkNavy,
         elevation: 0,
@@ -44,7 +43,7 @@ class _ManageItemsPageState extends State<ManageItemsPage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text("Validasi Barang", style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
-            Text("Kelola semua laporan barang", style: TextStyle(color: Colors.white70, fontSize: 12)),
+            Text("Kelola & Verifikasi Laporan", style: TextStyle(color: Colors.white70, fontSize: 12)),
           ],
         ),
         actions: [
@@ -55,7 +54,6 @@ class _ManageItemsPageState extends State<ManageItemsPage> {
         ],
       ),
       
-      // 2. LIST DATA
       body: Consumer<BarangProvider>(
         builder: (context, provider, _) {
           if (provider.isLoading) {
@@ -83,8 +81,6 @@ class _ManageItemsPageState extends State<ManageItemsPage> {
     );
   }
 
-  // --- WIDGETS ---
-
   Widget _buildEmptyState() {
     return Center(
       child: Column(
@@ -99,11 +95,15 @@ class _ManageItemsPageState extends State<ManageItemsPage> {
   }
 
   Widget _buildItemCard(BuildContext context, BarangProvider provider, Barang item) {
-    // Tentukan Warna & Teks Status
     Color statusColor;
     String statusText;
 
+    // --- LOGIKA STATUS BARU ---
     switch (item.status) {
+      case 'pending': // Status Baru
+        statusColor = verifyPurple;
+        statusText = "BUTUH VERIFIKASI";
+        break;
       case 'selesai':
         statusColor = successGreen;
         statusText = "SELESAI";
@@ -112,9 +112,9 @@ class _ManageItemsPageState extends State<ManageItemsPage> {
         statusColor = warningOrange;
         statusText = "PROSES KLAIM";
         break;
-      default:
+      default: // 'open'
         statusColor = Colors.blue;
-        statusText = "OPEN";
+        statusText = "OPEN (TAYANG)";
     }
 
     return Container(
@@ -129,7 +129,7 @@ class _ManageItemsPageState extends State<ManageItemsPage> {
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // FOTO BARANG (Thumbnail)
+              // FOTO BARANG
               ClipRRect(
                 borderRadius: BorderRadius.circular(10),
                 child: Container(
@@ -161,7 +161,7 @@ class _ManageItemsPageState extends State<ManageItemsPage> {
                             maxLines: 1, overflow: TextOverflow.ellipsis,
                           ),
                         ),
-                        // Badge Status Kecil
+                        // Badge Status
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                           decoration: BoxDecoration(
@@ -176,13 +176,11 @@ class _ManageItemsPageState extends State<ManageItemsPage> {
                       ],
                     ),
                     const SizedBox(height: 4),
-                    // Info Kategori & Lokasi
                     Text(
                       "${item.kategori?.namaKategori ?? '-'} • ${item.lokasi?.namaLokasi ?? '-'}",
                       style: const TextStyle(fontSize: 12, color: Colors.grey),
                     ),
                     const SizedBox(height: 4),
-                    // Info Pelapor
                     Row(
                       children: [
                         Icon(Icons.person_outline, size: 14, color: Colors.grey[600]),
@@ -205,11 +203,11 @@ class _ManageItemsPageState extends State<ManageItemsPage> {
           const Divider(height: 1, thickness: 0.5),
           const SizedBox(height: 8),
 
-          // ACTION BUTTONS
+          // --- ACTION BUTTONS (Update Logika) ---
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              // Tombol Hapus (Kiri)
+              // Tombol Hapus (Kiri - Selalu Ada)
               InkWell(
                 onTap: () => _confirmDelete(context, provider, item),
                 borderRadius: BorderRadius.circular(8),
@@ -225,8 +223,21 @@ class _ManageItemsPageState extends State<ManageItemsPage> {
                 ),
               ),
 
-              // Tombol Aksi Kanan (Tergantung Status)
-              if (item.status == 'proses_klaim')
+              // Tombol Kanan (Dinamis)
+              if (item.status == 'pending')
+                // TOMBOL VERIFIKASI (BARU)
+                ElevatedButton.icon(
+                  onPressed: () => _handleVerifikasi(context, provider, item.id),
+                  icon: const Icon(Icons.verified_user_outlined, size: 16, color: Colors.white),
+                  label: const Text("Verifikasi", style: TextStyle(color: Colors.white, fontSize: 13)),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: verifyPurple,
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+                )
+              else if (item.status == 'proses_klaim')
+                // TOMBOL SELESAIKAN (Existing)
                 ElevatedButton.icon(
                   onPressed: () => _showBuktiDialog(context, item),
                   icon: const Icon(Icons.check_circle_outline, size: 16, color: Colors.white),
@@ -238,7 +249,7 @@ class _ManageItemsPageState extends State<ManageItemsPage> {
                   ),
                 )
               else if (item.status == 'open')
-                const Text("Menunggu Klaim User", style: TextStyle(fontSize: 12, color: Colors.grey, fontStyle: FontStyle.italic))
+                const Text("Sudah Tayang", style: TextStyle(fontSize: 12, color: Colors.blue, fontStyle: FontStyle.italic))
               else
                 Row(
                   children: [
@@ -254,7 +265,40 @@ class _ManageItemsPageState extends State<ManageItemsPage> {
     );
   }
 
-  // --- ACTIONS ---
+  // --- ACTIONS LOGIC ---
+
+  // Dialog Konfirmasi Verifikasi
+  Future<void> _handleVerifikasi(BuildContext context, BarangProvider provider, int id) async {
+    bool? confirm = await showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text("Verifikasi Barang?"),
+        content: const Text("Barang ini akan ditayangkan ke publik (halaman mahasiswa). Lanjutkan?"),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text("Batal")),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: verifyPurple),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text("Ya, Verifikasi", style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      )
+    );
+
+    if (confirm == true) {
+      if (!mounted) return;
+      bool success = await provider.verifyBarang(id);
+      if (success && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Barang berhasil diverifikasi!"), backgroundColor: Colors.green)
+        );
+      } else if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(provider.errorMessage ?? "Gagal verifikasi"), backgroundColor: Colors.red)
+        );
+      }
+    }
+  }
 
   void _confirmDelete(BuildContext context, BarangProvider provider, Barang item) {
     showDialog(
@@ -348,13 +392,11 @@ class _ManageItemsPageState extends State<ManageItemsPage> {
                       }
                       Navigator.pop(context);
                       
-                      // Menggunakan KlaimProvider untuk upload bukti (sesuai context kode sebelumnya)
                       bool success = await Provider.of<KlaimProvider>(context, listen: false)
                           .uploadBukti(item.id, imageFile!, noteController.text);
                       
                       if(success && context.mounted) {
                          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Barang ${item.namaBarang} diselesaikan!"), backgroundColor: successGreen));
-                         // Refresh data
                          Provider.of<BarangProvider>(context, listen: false).fetchBarang(refresh: true);
                       }
                     }, 

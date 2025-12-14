@@ -206,6 +206,19 @@ Future<bool> deleteBarang(int id) async {
       return false; 
     }
   }
+    Future<bool> verifyBarang(int id) async {
+    final url = Uri.parse('$baseUrl/barang/$id/verifikasi');
+    final headers = await _getHeaders();
+
+    try {
+      final response = await http.patch(url, headers: headers);
+      print("DEBUG VERIFIKASI: ${response.statusCode} - ${response.body}");
+      return response.statusCode == 200;
+    } catch (e) {
+      print("Error Verifikasi: $e");
+      return false;
+    }
+  }
 
   // ===========================================================================
   // KLAIM PENEMUAN

@@ -12,68 +12,67 @@ use Illuminate\Support\Facades\DB;
 
 class KlaimPenemuanController extends Controller
 {
-    // GET List Klaim
+    // 1. INDEX: List Klaim
     public function index(Request $request)
     {
         $user = auth()->user();
 
-        // PERUBAHAN DISINI: Tambahkan 'with' untuk memuat relasi
-        // 'barang.pelapor' artinya: Ambil data Barang, lalu ambil data Pelapor di dalam barang tsb.
+        // Eager Load data barang & pelapor untuk ditampilkan di frontend
         $query = KlaimPenemuan::with(['barang.pelapor', 'barang.kategori', 'barang.lokasi', 'penemu']);
 
-        // Filter berdasarkan barang tertentu (untuk detail page)
+        // Filter berdasarkan ID Barang (Untuk Detail Page Barang)
         if ($request->has('barang_id')) {
             $query->where('id_barang', $request->barang_id);
         } else {
-            // Jika tidak ada filter barang:
+            // Filter berdasarkan Role User
             if ($user->role !== 'admin') {
-                // User biasa hanya melihat klaim yang diajukan OLEHNYA
-                // ATAU klaim YANG MASUK ke barang laporannya
+                // User biasa melihat:
+                // 1. Klaim yang dia ajukan sendiri
+                // 2. ATAU Klaim orang lain terhadap barang laporannya
                 $query->where('id_penemu', $user->id)
                       ->orWhereHas('barang', function($q) use ($user) {
                           $q->where('id_pelapor', $user->id);
                       });
             }
-            // Admin melihat semua (tidak perlu filter tambahan)
+            // Admin melihat semua
         }
 
         $data = $query->orderBy('created_at', 'desc')->get();
 
         return response()->json([
             'success' => true,
-            'message' => 'Data klaim berhasil diambil',
             'data' => $data
         ]);
     }
 
-    // POST Buat Klaim Baru (User mengklaim barang)
+    // 2. STORE: User Mengajukan Klaim
     public function store(Request $request)
     {
         $request->validate([
             'id_barang' => 'required|exists:barang,id',
-            'deskripsi_klaim' => 'required|string', // Di flutter kuncinya 'deskripsi_klaim' (sesuai providers)
-            'foto_penemuan' => 'nullable|image|max:5120', // Opsional, bukti foto
+            'deskripsi_klaim' => 'required|string',
+            'foto_penemuan' => 'nullable|image|max:5120',
         ]);
 
         $barang = Barang::findOrFail($request->id_barang);
         $userId = auth()->id();
 
-        // Validasi: Tidak bisa klaim barang laporan sendiri
+        // Validasi: Tidak boleh klaim barang sendiri
         if ($barang->id_pelapor == $userId) {
             return response()->json(['message' => 'Anda tidak bisa mengklaim laporan sendiri'], 422);
         }
 
-        // Cek apakah sudah pernah klaim
+        // Validasi: Tidak boleh double claim
         $existing = KlaimPenemuan::where('id_barang', $barang->id)
                     ->where('id_penemu', $userId)
                     ->first();
-
         if ($existing) {
              return response()->json(['message' => 'Anda sudah mengajukan klaim untuk barang ini'], 422);
         }
 
         DB::beginTransaction();
         try {
+            // Upload Foto Bukti Klaim (jika ada)
             $path = null;
             if ($request->hasFile('foto_penemuan')) {
                 $file = $request->file('foto_penemuan');
@@ -86,20 +85,24 @@ class KlaimPenemuanController extends Controller
             $klaim = KlaimPenemuan::create([
                 'id_barang' => $barang->id,
                 'id_penemu' => $userId,
-                'lokasi_ditemukan' => '-', // Default strip jika user tidak input lokasi spesifik
-                'deskripsi_penemuan' => $request->deskripsi_klaim, // Mapping input flutter ke db
+                'lokasi_ditemukan' => $request->lokasi_ditemukan ?? '-',
+                'deskripsi_penemuan' => $request->deskripsi_klaim,
                 'foto_penemuan' => $path,
                 'status_klaim' => 'menunggu_verifikasi_pemilik'
             ]);
 
-            // Update status barang jadi 'proses_klaim' agar user lain tau sedang ada proses
-            $barang->update(['status' => 'proses_klaim']);
+            // SINKRONISASI STATUS BARANG
+            // Ubah status barang agar user lain tahu ada proses berjalan
+            $barang->update([
+                'status' => 'proses_klaim',
+                'status_verifikasi' => 'menunggu_pemilik' // Kolom penanda fase klaim
+            ]);
 
-            // Buat Notifikasi ke Pemilik Barang
+            // Notifikasi ke Pemilik Barang
             Notifikasi::create([
                 'id_pengguna' => $barang->id_pelapor,
                 'judul' => 'Klaim Baru Masuk',
-                'pesan' => 'Seseorang mengklaim barang laporan Anda: ' . $barang->nama_barang,
+                'pesan' => 'Seseorang mengklaim barang: ' . $barang->nama_barang . '. Cek segera!',
             ]);
 
             DB::commit();
@@ -112,11 +115,11 @@ class KlaimPenemuanController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
-            return response()->json(['message' => 'Gagal mengajukan klaim: ' . $e->getMessage()], 500);
+            return response()->json(['message' => 'Gagal: ' . $e->getMessage()], 500);
         }
     }
 
-    // PATCH Update Status (Terima / Tolak)
+    // 3. UPDATE STATUS: Pemilik/Admin Menerima atau Menolak Klaim
     public function updateStatus(Request $request, $id)
     {
         $request->validate([
@@ -127,49 +130,92 @@ class KlaimPenemuanController extends Controller
         $barang = Barang::findOrFail($klaim->id_barang);
         $user = auth()->user();
 
-        // Validasi Hak Akses (Hanya pemilik barang atau admin yang boleh ubah status)
+        // 1. Validasi Hak Akses
         if ($barang->id_pelapor !== $user->id && $user->role !== 'admin') {
             return response()->json(['message' => 'Unauthorized action'], 403);
         }
 
-        $newStatus = $request->status_klaim;
-        $klaim->update(['status_klaim' => $newStatus]);
+        DB::beginTransaction();
+        try {
+            $newStatus = $request->status_klaim;
 
-        // Logic Update Status Barang Induk
-        if ($newStatus == 'diterima_pemilik') {
-            // Jika diterima, barang tetap 'proses_klaim' menunggu pengambilan fisik (upload bukti)
-            // Atau bisa langsung 'selesai' tergantung flow bisnis Anda.
-            // Di sini kita biarkan 'proses_klaim' sampai ada upload bukti di PengambilanController
+            // --- VALIDASI TAMBAHAN: MENCEGAH DOUBLE ACCEPT ---
+            if ($newStatus == 'diterima_pemilik') {
+                // Cek apakah SUDAH ADA klaim lain yang diterima untuk barang ini?
+                $alreadyAccepted = KlaimPenemuan::where('id_barang', $barang->id)
+                    ->where('id', '!=', $id) // Bukan ID klaim yang sedang diproses
+                    ->where('status_klaim', 'diterima_pemilik')
+                    ->exists();
 
-            // Notifikasi ke Pengklaim bahwa diterima
-            Notifikasi::create([
-                'id_pengguna' => $klaim->id_penemu,
-                'judul' => 'Klaim Diterima',
-                'pesan' => 'Klaim Anda untuk barang ' . $barang->nama_barang . ' telah disetujui. Silakan hubungi pemilik.',
-            ]);
+                if ($alreadyAccepted) {
+                    return response()->json([
+                        'message' => 'Gagal! Sudah ada klaim lain yang diterima untuk barang ini.'
+                    ], 400);
+                }
+            }
+            // --------------------------------------------------
 
-        } elseif ($newStatus == 'ditolak_pemilik' || $newStatus == 'ditolak_admin') {
-            // Jika ditolak, cek apakah masih ada klaim lain yang pending?
-            // Jika tidak ada, kembalikan status barang jadi 'open'
-            $pendingClaims = KlaimPenemuan::where('id_barang', $barang->id)
-                ->where('status_klaim', 'menunggu_verifikasi_pemilik')
-                ->exists();
+            // 2. Update Status Klaim Ini
+            $klaim->update(['status_klaim' => $newStatus]);
 
-            if (!$pendingClaims) {
-                $barang->update(['status' => 'open']);
+            // 3. Logic Sinkronisasi ke Barang
+            if ($newStatus == 'diterima_pemilik') {
+
+                // UPDATE BARANG: Paksa update status_verifikasi
+                $barang->status = 'proses_klaim';
+                $barang->status_verifikasi = 'diterima_pemilik';
+                $barang->save(); // Menggunakan save() terkadang lebih aman daripada update() jika ada isu fillable
+
+                // AUTO-REJECT KLAIM LAIN
+                // Semua klaim lain yang masih "menunggu" otomatis ditolak
+                KlaimPenemuan::where('id_barang', $barang->id)
+                    ->where('id', '!=', $klaim->id)
+                    ->where('status_klaim', 'menunggu_verifikasi_pemilik')
+                    ->update(['status_klaim' => 'ditolak_pemilik']);
+
+                // Notifikasi
+                Notifikasi::create([
+                    'id_pengguna' => $klaim->id_penemu,
+                    'judul' => 'Klaim Diterima',
+                    'pesan' => 'Klaim Anda untuk ' . $barang->nama_barang . ' diterima. Silakan hubungi pemilik.',
+                ]);
+
+            } elseif ($newStatus == 'ditolak_pemilik' || $newStatus == 'ditolak_admin') {
+
+                Notifikasi::create([
+                    'id_pengguna' => $klaim->id_penemu,
+                    'judul' => 'Klaim Ditolak',
+                    'pesan' => 'Maaf, klaim Anda untuk ' . $barang->nama_barang . ' ditolak.',
+                ]);
+
+                // Cek apakah masih ada klaim lain yang pending?
+                $pendingClaims = KlaimPenemuan::where('id_barang', $barang->id)
+                    ->where('status_klaim', 'menunggu_verifikasi_pemilik')
+                    ->exists();
+
+                // Cek apakah ada klaim yang DITERIMA?
+                $acceptedClaims = KlaimPenemuan::where('id_barang', $barang->id)
+                    ->where('status_klaim', 'diterima_pemilik')
+                    ->exists();
+
+                // Jika tidak ada yang pending DAN tidak ada yang diterima (semua ditolak), reset barang ke Open
+                if (!$pendingClaims && !$acceptedClaims) {
+                    $barang->status = 'open';
+                    $barang->status_verifikasi = 'belum_diverifikasi';
+                    $barang->save();
+                }
             }
 
-            Notifikasi::create([
-                'id_pengguna' => $klaim->id_penemu,
-                'judul' => 'Klaim Ditolak',
-                'pesan' => 'Maaf, klaim Anda untuk barang ' . $barang->nama_barang . ' ditolak.',
+            DB::commit();
+            return response()->json([
+                'success' => true,
+                'message' => 'Status klaim diperbarui',
+                'data' => $klaim
             ]);
-        }
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Status klaim diperbarui',
-            'data' => $klaim
-        ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json(['message' => 'Error: ' . $e->getMessage()], 500);
+        }
     }
 }

@@ -6,7 +6,7 @@ class Barang extends Model
 {
     protected $table = 'barang';
     protected $fillable = [
-        'nama_barang','deskripsi','gambar_url','tipe_laporan','status','tanggal_kejadian',
+        'nama_barang','deskripsi','gambar_url','tipe_laporan','status','status_verifikasi','tanggal_kejadian',
         'id_pelapor','id_kategori','id_lokasi'
     ];
 

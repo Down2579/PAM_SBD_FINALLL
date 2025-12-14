@@ -234,7 +234,26 @@ class BarangProvider with ChangeNotifier {
       return false;
     }
   }
+
+  Future<bool> verifyBarang(int id) async {
+    try {
+      bool success = await _apiService.verifyBarang(id);
+      if (success) {
+        // Update status di list lokal agar UI berubah tanpa loading ulang
+        final index = _listBarang.indexWhere((item) => item.id == id);
+        if (index != -1) {
+          // Kita perlu membuat object baru dengan status 'open' karena field 'status' final
+          // Cara aman: Refresh data dari server
+          await fetchBarang(refresh: true);
+        }
+      }
+      return success;
+    } catch (e) {
+      return false;
+    }
+  }
 }
+
 
 // ============================================================================
 // 3. KLAIM PROVIDER (User & Admin Actions)

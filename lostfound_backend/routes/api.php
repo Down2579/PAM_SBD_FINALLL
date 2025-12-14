@@ -22,6 +22,7 @@ Route::middleware('auth:sanctum')->group(function(){
     Route::post('barang', [BarangController::class,'store']);
     Route::get('barang/{barang}', [BarangController::class,'show']);
     Route::put('barang/{barang}', [BarangController::class,'update']);
+    Route::patch('/barang/{id}/verifikasi', [BarangController::class, 'verifikasi']);
     Route::delete('barang/{barang}', [BarangController::class,'destroy']);
     Route::post('barang/{barang}/foto', [BarangController::class,'uploadFoto']);
 
