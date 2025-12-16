@@ -128,23 +128,48 @@ class BarangController extends Controller
     }
 
     // 5. UPDATE: Edit Barang
-    public function update(StoreBarangRequest $req, Barang $barang)
+    public function update(Request $req, Barang $barang)
     {
-        $this->authorize('update', $barang); // Pastikan ada Policy atau logic manual
-        $data = $req->validated();
+        // 1. Cek Authorize (Pastikan user adalah pemilik atau admin)
+        // Jika Anda belum setup Policy, bisa pakai manual check:
+        if (auth()->user()->role !== 'admin' && auth()->id() !== $barang->id_pelapor) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
 
+        // 2. Validasi Manual (Lebih aman untuk Update)
+        // Perhatikan 'gambar' kita set 'nullable' agar tidak wajib upload ulang
+        $data = $req->validate([
+            'nama_barang'      => 'required|string|max:100',
+            'deskripsi'        => 'required|string',
+            'tipe_laporan'     => 'required|in:hilang,ditemukan',
+            'id_kategori'      => 'required|exists:kategori,id',
+            'id_lokasi'        => 'required|exists:lokasi,id',
+            'tanggal_kejadian' => 'required|date',
+            'gambar'           => 'nullable|image|max:5120', // <--- PENTING: Boleh kosong
+        ]);
+
+        // 3. Logika Upload Gambar (Hanya jika ada file baru)
         if ($req->hasFile('gambar')) {
+            // Hapus gambar lama jika ada
             if ($barang->gambar_url) {
+                // Bersihkan path '/storage/' agar bisa dihapus oleh Storage facade
                 $oldPath = str_replace('/storage/', '', $barang->gambar_url);
                 if (Storage::disk('public')->exists($oldPath)) {
                     Storage::disk('public')->delete($oldPath);
                 }
             }
+
+            // Simpan gambar baru
             $path = $req->file('gambar')->store('barang', 'public');
             $data['gambar_url'] = '/storage/' . $path;
         }
 
+        // 4. Bersihkan key 'gambar' (karena di database namanya 'gambar_url')
+        unset($data['gambar']);
+
+        // 5. Update Database
         $barang->update($data);
+
         return new BarangResource($barang->fresh());
     }
 

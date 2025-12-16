@@ -4,18 +4,19 @@ import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
-import '../providers.dart'; // Pastikan path benar
-import '../models.dart'; // Pastikan path benar
+import '../providers.dart';
+import '../models.dart';
 
 class AddItemScreen extends StatefulWidget {
-  const AddItemScreen({super.key});
+  final Barang? itemToEdit; 
+
+  const AddItemScreen({super.key, this.itemToEdit});
 
   @override
   State<AddItemScreen> createState() => _AddItemScreenState();
 }
 
 class _AddItemScreenState extends State<AddItemScreen> {
-  // Form Key
   final _formKey = GlobalKey<FormState>();
 
   // Controllers
@@ -25,27 +26,41 @@ class _AddItemScreenState extends State<AddItemScreen> {
   // State Variables
   int? _selectedCategoryId;
   int? _selectedLocationId;
-  String? _selectedReportType; // 'hilang' atau 'ditemukan'
+  String? _selectedReportType; // 'hilang' | 'ditemukan'
   DateTime? _selectedDate;
   
-  File? _selectedImage;
+  File? _selectedImage; 
   final ImagePicker _picker = ImagePicker();
 
-  // Colors Palette (Konsisten)
+  // Colors Palette
   final Color bgPage = const Color(0xFFF5F7FA);
   final Color darkNavy = const Color(0xFF2B4263);
   final Color accentBlue = const Color(0xFF4A90E2);
   final Color textDark = const Color(0xFF1F2937);
   final Color textGrey = const Color(0xFF9CA3AF);
   final Color inputFill = const Color(0xFFF9FAFB);
+  
+  final String baseUrlImage = 'http://10.0.2.2:8000'; // Sesuaikan IP
 
   @override
   void initState() {
     super.initState();
-    // Load Master Data (Kategori & Lokasi) via Provider saat masuk halaman
+    
+    // 1. Load Master Data
     Future.microtask(() => 
       Provider.of<GeneralProvider>(context, listen: false).loadMasterData()
     );
+
+    // 2. Pre-fill Data jika Mode Edit
+    if (widget.itemToEdit != null) {
+      final item = widget.itemToEdit!;
+      _nameController.text = item.namaBarang;
+      _descController.text = item.deskripsi;
+      _selectedCategoryId = item.kategori?.id;
+      _selectedLocationId = item.lokasi?.id;
+      _selectedReportType = item.tipeLaporan;
+      _selectedDate = item.tanggalKejadian;
+    }
   }
 
   @override
@@ -57,9 +72,26 @@ class _AddItemScreenState extends State<AddItemScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Listen providers
     final generalProvider = Provider.of<GeneralProvider>(context);
     final barangProvider = Provider.of<BarangProvider>(context);
+    final bool isEditMode = widget.itemToEdit != null;
+
+    // --- FIX DROPDOWN ERROR ---
+    // Pastikan ID yang dipilih benar-benar ada di dalam list provider.
+    // Jika list belum load atau ID tidak ditemukan, set jadi null agar tidak crash.
+    
+    int? validCategoryId;
+    if (_selectedCategoryId != null && 
+        generalProvider.kategoriList.any((e) => e.id == _selectedCategoryId)) {
+      validCategoryId = _selectedCategoryId;
+    }
+
+    int? validLocationId;
+    if (_selectedLocationId != null && 
+        generalProvider.lokasiList.any((e) => e.id == _selectedLocationId)) {
+      validLocationId = _selectedLocationId;
+    }
+    // ---------------------------
 
     return Scaffold(
       backgroundColor: bgPage,
@@ -72,7 +104,7 @@ class _AddItemScreenState extends State<AddItemScreen> {
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
-          "New Report",
+          isEditMode ? "Edit Laporan" : "Buat Laporan Baru",
           style: TextStyle(color: textDark, fontWeight: FontWeight.bold, fontSize: 18),
         ),
       ),
@@ -83,49 +115,44 @@ class _AddItemScreenState extends State<AddItemScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // ================= HEADER TEXT =================
               Text(
-                "Item Details",
+                "Detail Barang",
                 style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: darkNavy),
               ),
               const SizedBox(height: 8),
               Text(
-                "Please fill in the details of the item found or lost.",
+                "Mohon isi detail barang yang hilang atau ditemukan dengan lengkap.",
                 style: TextStyle(color: textGrey, fontSize: 14),
               ),
               const SizedBox(height: 24),
 
-              // ================= FORM CONTAINER =================
+              // FORM CONTAINER
               Container(
                 padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(24),
                   boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.03),
-                      blurRadius: 20,
-                      offset: const Offset(0, 10),
-                    )
+                    BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 20, offset: const Offset(0, 10))
                   ],
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // 1. NAMA BARANG
-                    _buildLabel("Item Name"),
+                    // 1. NAMA
+                    _buildLabel("Nama Barang"),
                     _buildTextField(
                       controller: _nameController,
-                      hint: "e.g. Black Leather Wallet",
+                      hint: "Contoh: Dompet Kulit Hitam",
                       icon: Icons.edit_outlined,
                     ),
                     const SizedBox(height: 20),
 
-                    // 2. KATEGORI (Dropdown dari Provider)
-                    _buildLabel("Category"),
+                    // 2. KATEGORI (Gunakan validCategoryId)
+                    _buildLabel("Kategori"),
                     _buildDropdown<int>(
-                      value: _selectedCategoryId,
-                      hint: "Select Category",
+                      value: validCategoryId, // <--- FIX DITERAPKAN DISINI
+                      hint: "Pilih Kategori",
                       icon: Icons.category_outlined,
                       items: generalProvider.kategoriList.map((e) {
                         return DropdownMenuItem(value: e.id, child: Text(e.namaKategori));
@@ -134,11 +161,11 @@ class _AddItemScreenState extends State<AddItemScreen> {
                     ),
                     const SizedBox(height: 20),
 
-                    // 3. LOKASI (Dropdown dari Provider)
-                    _buildLabel("Location"),
+                    // 3. LOKASI (Gunakan validLocationId)
+                    _buildLabel("Lokasi"),
                     _buildDropdown<int>(
-                      value: _selectedLocationId,
-                      hint: "Select Location",
+                      value: validLocationId, // <--- FIX DITERAPKAN DISINI
+                      hint: "Pilih Lokasi",
                       icon: Icons.location_on_outlined,
                       items: generalProvider.lokasiList.map((e) {
                         return DropdownMenuItem(value: e.id, child: Text(e.namaLokasi));
@@ -148,41 +175,41 @@ class _AddItemScreenState extends State<AddItemScreen> {
                     const SizedBox(height: 20),
 
                     // 4. TIPE LAPORAN
-                    _buildLabel("Report Type"),
+                    _buildLabel("Jenis Laporan"),
                     Row(
                       children: [
-                        Expanded(child: _buildRadioButton("Lost", "hilang", Colors.redAccent)),
+                        Expanded(child: _buildRadioButton("Kehilangan", "hilang", Colors.redAccent)),
                         const SizedBox(width: 12),
-                        Expanded(child: _buildRadioButton("Found", "ditemukan", Colors.green)),
+                        Expanded(child: _buildRadioButton("Ditemukan", "ditemukan", Colors.green)),
                       ],
                     ),
                     const SizedBox(height: 20),
 
                     // 5. TANGGAL
-                    _buildLabel("Date"),
+                    _buildLabel("Tanggal Kejadian"),
                     _buildDatePicker(),
                     const SizedBox(height: 20),
 
                     // 6. DESKRIPSI
-                    _buildLabel("Description"),
+                    _buildLabel("Deskripsi Tambahan"),
                     _buildTextField(
                       controller: _descController,
-                      hint: "Describe specific features...",
+                      hint: "Jelaskan ciri-ciri khusus barang...",
                       icon: Icons.description_outlined,
                       maxLines: 3,
                     ),
                     const SizedBox(height: 20),
 
                     // 7. GAMBAR
-                    _buildLabel("Photo"),
-                    _buildImagePickerBox(),
+                    _buildLabel("Foto Barang"),
+                    _buildImagePickerBox(isEditMode),
                   ],
                 ),
               ),
 
               const SizedBox(height: 30),
 
-              // ================= SUBMIT BUTTON =================
+              // SUBMIT BUTTON
               SizedBox(
                 width: double.infinity,
                 height: 56,
@@ -195,13 +222,10 @@ class _AddItemScreenState extends State<AddItemScreen> {
                     shadowColor: darkNavy.withOpacity(0.3),
                   ),
                   child: barangProvider.isLoading
-                      ? const SizedBox(
-                          width: 24, height: 24,
-                          child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
-                        )
-                      : const Text(
-                          "Submit Report",
-                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
+                      ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                      : Text(
+                          isEditMode ? "Simpan Perubahan" : "Kirim Laporan",
+                          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
                         ),
                 ),
               ),
@@ -215,59 +239,56 @@ class _AddItemScreenState extends State<AddItemScreen> {
 
   // ================= LOGIC METHODS =================
 
-Future<void> _handleSubmit() async {
-    // ... (Validasi awal tetap sama) ...
+  Future<void> _handleSubmit() async {
     if (_nameController.text.isEmpty || 
         _selectedCategoryId == null || 
         _selectedLocationId == null ||
         _selectedReportType == null ||
         _selectedDate == null ||
         _descController.text.isEmpty) {
+      
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Mohon lengkapi semua data"), backgroundColor: Colors.red),
+        const SnackBar(content: Text("Mohon lengkapi semua data!"), backgroundColor: Colors.red),
       );
       return;
     }
 
-    // ... (Data Map tetap sama) ...
     final Map<String, String> data = {
       'nama_barang': _nameController.text,
       'deskripsi': _descController.text,
-      'tipe_laporan': _selectedReportType!, 
+      'tipe_laporan': _selectedReportType!,
       'id_kategori': _selectedCategoryId.toString(),
       'id_lokasi': _selectedLocationId.toString(),
       'tanggal_kejadian': DateFormat('yyyy-MM-dd').format(_selectedDate!),
     };
 
-    // Panggil Provider
-    // Pastikan provider mengirimkan image jika ada
-    final success = await Provider.of<BarangProvider>(context, listen: false)
-        .addBarang(data, _selectedImage, null); 
+    bool success;
+    final provider = Provider.of<BarangProvider>(context, listen: false);
+
+    if (widget.itemToEdit != null) {
+      success = await provider.updateBarang(widget.itemToEdit!.id, data, _selectedImage);
+    } else {
+      success = await provider.addBarang(data, _selectedImage, null);
+    }
 
     if (success && mounted) {
-      // 1. UPDATE PESAN AGAR LEBIH INFORMATIF
+      String message = widget.itemToEdit != null 
+          ? "Laporan berhasil diperbarui!" 
+          : "Laporan berhasil dikirim! Menunggu verifikasi admin.";
+          
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("Laporan berhasil dikirim! Cek menu 'My Task' untuk memantau status verifikasi."), 
-          backgroundColor: Colors.green,
-          duration: Duration(seconds: 3),
-        ),
+        SnackBar(content: Text(message), backgroundColor: Colors.green, duration: const Duration(seconds: 3)),
       );
-      
-      // 2. KIRIM 'true' SAAT KEMBALI
-      // Ini memberitahu halaman sebelumnya untuk refresh list
-      Navigator.pop(context, true); 
-      
+      Navigator.pop(context, true);
     } else if (mounted) {
-      final msg = Provider.of<BarangProvider>(context, listen: false).errorMessage;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(msg ?? "Gagal mengirim laporan"), backgroundColor: Colors.red),
+        SnackBar(content: Text(provider.errorMessage ?? "Gagal menyimpan data"), backgroundColor: Colors.red),
       );
     }
   }
 
   Future<void> _pickImage(ImageSource source) async {
-    Navigator.pop(context); // Tutup modal
+    Navigator.pop(context);
     final XFile? image = await _picker.pickImage(source: source, imageQuality: 70);
     if (image != null) {
       setState(() {
@@ -281,29 +302,13 @@ Future<void> _handleSubmit() async {
   Widget _buildLabel(String text) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8.0, left: 4.0),
-      child: Text(
-        text,
-        style: TextStyle(
-          color: darkNavy,
-          fontWeight: FontWeight.bold,
-          fontSize: 14,
-        ),
-      ),
+      child: Text(text, style: TextStyle(color: darkNavy, fontWeight: FontWeight.bold, fontSize: 14)),
     );
   }
 
-  Widget _buildTextField({
-    required TextEditingController controller,
-    required String hint,
-    required IconData icon,
-    int maxLines = 1,
-  }) {
+  Widget _buildTextField({required TextEditingController controller, required String hint, required IconData icon, int maxLines = 1}) {
     return Container(
-      decoration: BoxDecoration(
-        color: inputFill,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.grey.withOpacity(0.2)),
-      ),
+      decoration: BoxDecoration(color: inputFill, borderRadius: BorderRadius.circular(16), border: Border.all(color: Colors.grey.withOpacity(0.2))),
       child: TextFormField(
         controller: controller,
         maxLines: maxLines,
@@ -319,31 +324,15 @@ Future<void> _handleSubmit() async {
     );
   }
 
-  Widget _buildDropdown<T>({
-    required T? value,
-    required String hint,
-    required IconData icon,
-    required List<DropdownMenuItem<T>> items,
-    required ValueChanged<T?> onChanged,
-  }) {
+  Widget _buildDropdown<T>({required T? value, required String hint, required IconData icon, required List<DropdownMenuItem<T>> items, required ValueChanged<T?> onChanged}) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12),
-      decoration: BoxDecoration(
-        color: inputFill,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.grey.withOpacity(0.2)),
-      ),
+      decoration: BoxDecoration(color: inputFill, borderRadius: BorderRadius.circular(16), border: Border.all(color: Colors.grey.withOpacity(0.2))),
       child: DropdownButtonHideUnderline(
         child: DropdownButton<T>(
           value: value,
           icon: Icon(Icons.keyboard_arrow_down_rounded, color: darkNavy),
-          hint: Row(
-            children: [
-              Icon(icon, color: Colors.grey[500], size: 22),
-              const SizedBox(width: 12),
-              Text(hint, style: TextStyle(color: Colors.grey[400], fontSize: 14)),
-            ],
-          ),
+          hint: Row(children: [Icon(icon, color: Colors.grey[500], size: 22), const SizedBox(width: 12), Text(hint, style: TextStyle(color: Colors.grey[400], fontSize: 14))]),
           items: items,
           onChanged: onChanged,
           isExpanded: true,
@@ -364,20 +353,10 @@ Future<void> _handleSubmit() async {
         decoration: BoxDecoration(
           color: isSelected ? activeColor.withOpacity(0.1) : inputFill,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: isSelected ? activeColor : Colors.grey.withOpacity(0.2),
-            width: isSelected ? 1.5 : 1,
-          ),
+          border: Border.all(color: isSelected ? activeColor : Colors.grey.withOpacity(0.2), width: isSelected ? 1.5 : 1),
         ),
         child: Center(
-          child: Text(
-            label,
-            style: TextStyle(
-              color: isSelected ? activeColor : Colors.grey[500],
-              fontWeight: FontWeight.bold,
-              fontSize: 14,
-            ),
-          ),
+          child: Text(label, style: TextStyle(color: isSelected ? activeColor : Colors.grey[500], fontWeight: FontWeight.bold, fontSize: 14)),
         ),
       ),
     );
@@ -388,40 +367,23 @@ Future<void> _handleSubmit() async {
       onTap: () async {
         final picked = await showDatePicker(
           context: context,
-          initialDate: DateTime.now(),
+          initialDate: _selectedDate ?? DateTime.now(),
           firstDate: DateTime(2020),
           lastDate: DateTime.now(),
-          builder: (context, child) {
-            return Theme(
-              data: ThemeData.light().copyWith(
-                colorScheme: ColorScheme.light(primary: darkNavy),
-              ),
-              child: child!,
-            );
-          },
+          builder: (context, child) => Theme(data: ThemeData.light().copyWith(colorScheme: ColorScheme.light(primary: darkNavy)), child: child!),
         );
         if (picked != null) setState(() => _selectedDate = picked);
       },
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-        decoration: BoxDecoration(
-          color: inputFill,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: Colors.grey.withOpacity(0.2)),
-        ),
+        decoration: BoxDecoration(color: inputFill, borderRadius: BorderRadius.circular(16), border: Border.all(color: Colors.grey.withOpacity(0.2))),
         child: Row(
           children: [
             Icon(Icons.calendar_today_rounded, color: Colors.grey[500], size: 22),
             const SizedBox(width: 12),
             Text(
-              _selectedDate == null 
-                  ? "Select Date" 
-                  : DateFormat('dd MMMM yyyy').format(_selectedDate!),
-              style: TextStyle(
-                color: _selectedDate == null ? Colors.grey[400] : textDark,
-                fontWeight: FontWeight.w600,
-                fontSize: 14
-              ),
+              _selectedDate == null ? "Pilih Tanggal" : DateFormat('dd MMMM yyyy').format(_selectedDate!),
+              style: TextStyle(color: _selectedDate == null ? Colors.grey[400] : textDark, fontWeight: FontWeight.w600, fontSize: 14),
             ),
           ],
         ),
@@ -429,7 +391,17 @@ Future<void> _handleSubmit() async {
     );
   }
 
-  Widget _buildImagePickerBox() {
+  Widget _buildImagePickerBox(bool isEditMode) {
+    ImageProvider? imageProvider;
+
+    if (_selectedImage != null) {
+      imageProvider = FileImage(_selectedImage!);
+    } else if (isEditMode && widget.itemToEdit?.gambarUrl != null) {
+      String url = widget.itemToEdit!.gambarUrl!;
+      if (!url.startsWith('http')) url = baseUrlImage + url;
+      imageProvider = NetworkImage(url);
+    }
+
     return GestureDetector(
       onTap: () => _showImageSourceModal(),
       child: Container(
@@ -439,17 +411,17 @@ Future<void> _handleSubmit() async {
           color: inputFill,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(color: Colors.grey.withOpacity(0.2), style: BorderStyle.solid),
-          image: _selectedImage != null 
-              ? DecorationImage(image: FileImage(_selectedImage!), fit: BoxFit.cover)
+          image: imageProvider != null 
+              ? DecorationImage(image: imageProvider, fit: BoxFit.cover)
               : null
         ),
-        child: _selectedImage == null
+        child: imageProvider == null
             ? Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Icon(Icons.add_a_photo_rounded, color: accentBlue, size: 40),
                   const SizedBox(height: 8),
-                  Text("Upload Image", style: TextStyle(color: accentBlue, fontWeight: FontWeight.bold)),
+                  Text("Upload Foto", style: TextStyle(color: accentBlue, fontWeight: FontWeight.bold)),
                 ],
               )
             : null,
@@ -466,13 +438,13 @@ Future<void> _handleSubmit() async {
         height: 180,
         child: Column(
           children: [
-            Text("Select Image Source", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: darkNavy)),
+            Text("Pilih Sumber Foto", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: darkNavy)),
             const SizedBox(height: 20),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
-                _buildSourceOption(Icons.camera_alt_rounded, "Camera", ImageSource.camera),
-                _buildSourceOption(Icons.photo_library_rounded, "Gallery", ImageSource.gallery),
+                _buildSourceOption(Icons.camera_alt_rounded, "Kamera", ImageSource.camera),
+                _buildSourceOption(Icons.photo_library_rounded, "Galeri", ImageSource.gallery),
               ],
             )
           ],
@@ -486,14 +458,7 @@ Future<void> _handleSubmit() async {
       onTap: () => _pickImage(source),
       child: Column(
         children: [
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: bgPage,
-              shape: BoxShape.circle,
-            ),
-            child: Icon(icon, size: 30, color: darkNavy),
-          ),
+          Container(padding: const EdgeInsets.all(16), decoration: BoxDecoration(color: bgPage, shape: BoxShape.circle), child: Icon(icon, size: 30, color: darkNavy)),
           const SizedBox(height: 8),
           Text(label, style: TextStyle(fontWeight: FontWeight.w500, color: textDark)),
         ],

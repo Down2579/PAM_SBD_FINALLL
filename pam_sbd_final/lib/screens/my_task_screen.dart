@@ -75,11 +75,16 @@ class _MyTaskScreenState extends State<MyTaskScreen> {
       appBar: AppBar(
         backgroundColor: bgPage,
         elevation: 0,
-        leading: IconButton(
-          icon: Icon(Icons.arrow_back_ios_new_rounded,
-              color: textDark, size: 22),
-          onPressed: () => Navigator.pop(context),
+      leading: IconButton(
+        icon: Icon(
+          Icons.arrow_back_ios_new_rounded,
+          color: textDark,
+          size: 22,
         ),
+        onPressed: () {
+          Navigator.of(context).popUntil((route) => route.isFirst);
+        },
+      ),
         title: Text("My Tasks",
             style:
                 TextStyle(color: textDark, fontWeight: FontWeight.bold)),

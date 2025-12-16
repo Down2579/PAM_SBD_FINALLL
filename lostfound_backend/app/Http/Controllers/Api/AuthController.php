@@ -31,7 +31,7 @@ class AuthController extends Controller
         }
 
         if(!$user || !Hash::check($creds['password'],$user->password)){
-            return response()->json(['message'=>'Credentials invalid'],401);
+            return response()->json(['message'=>'Password Salah'],401);
         }
         $token = $user->createToken('api-token')->plainTextToken;
         return response()->json(['user'=>$user,'token'=>$token]);
@@ -40,6 +40,6 @@ class AuthController extends Controller
     public function logout(Request $req)
     {
         $req->user()->currentAccessToken()->delete();
-        return response()->json(['message'=>'Logged out']);
+        return response()->json(['message'=>'Berhasil Logout']);
     }
 }

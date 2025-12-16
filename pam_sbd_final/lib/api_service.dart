@@ -187,6 +187,51 @@ class ApiService {
     }
   }
 
+// Di dalam class ApiService
+
+  Future<bool> updateBarang(int id, Map<String, String> fields, File? imageFile) async {
+    // 1. PENTING: Gunakan POST, bukan PUT
+    final url = Uri.parse('$baseUrl/barang/$id');
+    final headers = await _getHeaders(isMultipart: true);
+
+    var request = http.MultipartRequest('POST', url); // Gunakan POST
+    request.headers.addAll(headers);
+
+    // 2. PENTING: Tambahkan _method = PUT untuk memberi tahu Laravel
+    fields['_method'] = 'PUT'; 
+
+    // Masukkan semua field teks
+    fields.forEach((key, value) {
+      request.fields[key] = value;
+    });
+
+    // Masukkan file gambar JIKA ADA
+    if (imageFile != null) {
+      var stream = http.ByteStream(imageFile.openRead());
+      var length = await imageFile.length();
+      var multipartFile = http.MultipartFile(
+        'gambar', // Sesuaikan nama field di Laravel
+        stream,
+        length,
+        filename: imageFile.path.split('/').last,
+      );
+      request.files.add(multipartFile);
+    }
+
+    try {
+      final response = await request.send();
+      final respStr = await response.stream.bytesToString();
+      
+      print("Update Status: ${response.statusCode}");
+      print("Update Body: $respStr");
+
+      return response.statusCode == 200;
+    } catch (e) {
+      print("Error Update: $e");
+      return false;
+    }
+  }
+
 Future<bool> deleteBarang(int id) async {
     final url = Uri.parse('$baseUrl/barang/$id');
     final headers = await _getHeaders();

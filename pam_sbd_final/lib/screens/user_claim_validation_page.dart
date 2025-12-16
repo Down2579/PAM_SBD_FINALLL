@@ -12,7 +12,6 @@ class UserClaimValidationPage extends StatefulWidget {
 }
 
 class _UserClaimValidationPageState extends State<UserClaimValidationPage> {
-  // Warna Palette
   final Color darkNavy = const Color(0xFF2B4263);
   final Color bgPage = const Color(0xFFF5F7FA);
   final Color successGreen = const Color(0xFF10B981);
@@ -24,9 +23,6 @@ class _UserClaimValidationPageState extends State<UserClaimValidationPage> {
   @override
   void initState() {
     super.initState();
-    // Fetch klaim saat halaman dibuka
-    // Pastikan di Provider logic fetchAllKlaim sudah menghandle filter 'user biasa' vs 'admin'
-    // (Kode controller backend Anda sudah mendukung filter ini)
     Future.microtask(() => 
       Provider.of<KlaimProvider>(context, listen: false).fetchAllKlaim()
     );
@@ -37,27 +33,18 @@ class _UserClaimValidationPageState extends State<UserClaimValidationPage> {
     return Scaffold(
       backgroundColor: bgPage,
       appBar: AppBar(
-        title: const Text("Klaim Masuk", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+        title: const Text("Daftar Klaim Masuk", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
         backgroundColor: darkNavy,
         elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white),
-          onPressed: () => Navigator.pop(context),
-        ),
+        iconTheme: const IconThemeData(color: Colors.white),
       ),
       body: Consumer<KlaimProvider>(
         builder: (context, provider, child) {
-          if (provider.isLoading) {
-            return Center(child: CircularProgressIndicator(color: darkNavy));
-          }
+          if (provider.isLoading) return Center(child: CircularProgressIndicator(color: darkNavy));
           
-          // Filter Lokal: Pastikan hanya menampilkan klaim yang statusnya butuh aksi pemilik
-          // Atau tampilkan semua history juga boleh.
           final List<KlaimPenemuan> myClaims = provider.klaimList;
 
-          if (myClaims.isEmpty) {
-            return _buildEmptyState();
-          }
+          if (myClaims.isEmpty) return _buildEmptyState();
 
           return RefreshIndicator(
             onRefresh: () => provider.fetchAllKlaim(),
@@ -91,10 +78,18 @@ class _UserClaimValidationPageState extends State<UserClaimValidationPage> {
 
   Widget _buildClaimCard(BuildContext context, KlaimPenemuan klaim, KlaimProvider provider) {
     final barang = klaim.barang;
-    final penemu = klaim.penemu; // Orang yang mengklaim barang kita
+    final userClaimant = klaim.penemu; 
 
-    // Cek apakah tombol aksi perlu dimunculkan
-    // Hanya muncul jika status masih "menunggu_verifikasi_pemilik"
+    // LOGIKA PERBEDAAN TAMPILAN (LOST vs FOUND)
+    // Jika tipe laporan 'hilang', berarti saya kehilangan, orang ini MENEMUKANNYA.
+    // Jika tipe laporan 'ditemukan', berarti saya menemukan, orang ini MENGAKU PEMILIKNYA.
+    bool isMyItemLost = barang?.tipeLaporan == 'hilang';
+
+    String labelUser = isMyItemLost ? "Ditemukan Oleh:" : "Diklaim Oleh (Mengaku Pemilik):";
+    String labelLocation = isMyItemLost ? "Lokasi Ditemukan:" : "Perkiraan Lokasi Hilang:";
+    String labelDesc = isMyItemLost ? "Kondisi Barang:" : "Ciri-ciri Khusus (Bukti):";
+    
+    // Tombol Aksi
     bool showActions = klaim.statusKlaim == 'menunggu_verifikasi_pemilik';
 
     return Card(
@@ -105,7 +100,7 @@ class _UserClaimValidationPageState extends State<UserClaimValidationPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // 1. HEADER: INFO BARANG
+            // HEADER BARANG
             Row(
               children: [
                 _buildImageThumb(barang?.gambarUrl),
@@ -115,12 +110,12 @@ class _UserClaimValidationPageState extends State<UserClaimValidationPage> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        barang?.namaBarang ?? "Unknown Item", 
+                        barang?.namaBarang ?? "-", 
                         style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: darkNavy),
                       ),
                       Text(
-                        "Diklaim pada: ${DateFormat('dd MMM yyyy').format(klaim.createdAt)}",
-                        style: const TextStyle(fontSize: 12, color: Colors.grey),
+                        "Status: ${isMyItemLost ? 'HILANG' : 'DITEMUKAN'}",
+                        style: TextStyle(fontSize: 12, color: isMyItemLost ? errorRed : successGreen, fontWeight: FontWeight.bold),
                       ),
                     ],
                   ),
@@ -130,8 +125,8 @@ class _UserClaimValidationPageState extends State<UserClaimValidationPage> {
             ),
             const Divider(height: 24),
             
-            // 2. INFO PENGKLAIM (PENEMU)
-            Text("Pengaju Klaim:", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.grey[600])),
+            // INFO USER YANG MENGKLAIM
+            Text(labelUser, style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.grey[600])),
             const SizedBox(height: 8),
             Container(
               padding: const EdgeInsets.all(12),
@@ -142,25 +137,32 @@ class _UserClaimValidationPageState extends State<UserClaimValidationPage> {
                   Row(
                     children: [
                       CircleAvatar(
-                        radius: 14,
+                        radius: 16,
                         backgroundColor: Colors.grey[300],
-                        child: Icon(Icons.person, size: 18, color: Colors.grey[600]),
+                        child: Icon(Icons.person, size: 20, color: Colors.grey[600]),
                       ),
-                      const SizedBox(width: 8),
-                      Text(
-                        penemu?.namaLengkap ?? "User #${klaim.idPenemu}",
-                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                      const SizedBox(width: 10),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            userClaimant?.namaLengkap ?? "User #${klaim.idPenemu}",
+                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                          ),
+                          if (userClaimant?.nomorTelepon != null)
+                            Text(userClaimant!.nomorTelepon!, style: TextStyle(fontSize: 11, color: darkNavy)),
+                        ],
                       ),
                     ],
                   ),
-                  const SizedBox(height: 8),
-                  const Text("Pesan / Ciri-ciri:", style: TextStyle(fontSize: 11, color: Colors.grey)),
-                  Text(
-                    klaim.deskripsiPenemuan ?? "-",
-                    style: const TextStyle(fontSize: 13, fontStyle: FontStyle.italic),
-                  ),
+                  const SizedBox(height: 12),
                   
-                  // Tampilkan Foto Bukti jika ada
+                  // Detail Klaim
+                  _buildDetailRow(Icons.pin_drop_outlined, labelLocation, klaim.lokasiDitemukan),
+                  const SizedBox(height: 8),
+                  _buildDetailRow(Icons.description_outlined, labelDesc, klaim.deskripsiPenemuan ?? "-"),
+
+                  // Foto Bukti
                   if (klaim.fotoPenemuan != null) ...[
                     const SizedBox(height: 12),
                     const Text("Bukti Foto:", style: TextStyle(fontSize: 11, color: Colors.grey)),
@@ -168,12 +170,8 @@ class _UserClaimValidationPageState extends State<UserClaimValidationPage> {
                     ClipRRect(
                       borderRadius: BorderRadius.circular(8),
                       child: Image.network(
-                        klaim.fotoPenemuan!.startsWith('http') 
-                           ? klaim.fotoPenemuan! 
-                           : baseUrlImage + klaim.fotoPenemuan!,
-                        height: 120,
-                        width: double.infinity,
-                        fit: BoxFit.cover,
+                        klaim.fotoPenemuan!.startsWith('http') ? klaim.fotoPenemuan! : baseUrlImage + klaim.fotoPenemuan!,
+                        height: 120, width: double.infinity, fit: BoxFit.cover,
                         errorBuilder: (_,__,___) => const Text("Gagal muat foto", style: TextStyle(color: Colors.red)),
                       ),
                     ),
@@ -184,7 +182,7 @@ class _UserClaimValidationPageState extends State<UserClaimValidationPage> {
 
             const SizedBox(height: 20),
 
-            // 3. ACTION BUTTONS
+            // BUTTONS
             if (showActions)
               Row(
                 children: [
@@ -194,10 +192,9 @@ class _UserClaimValidationPageState extends State<UserClaimValidationPage> {
                       style: OutlinedButton.styleFrom(
                         foregroundColor: errorRed,
                         side: BorderSide(color: errorRed),
-                        padding: const EdgeInsets.symmetric(vertical: 12),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                       ),
-                      child: const Text("Tolak Klaim"),
+                      child: const Text("Tolak"),
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -206,30 +203,19 @@ class _UserClaimValidationPageState extends State<UserClaimValidationPage> {
                       onPressed: () => _handleAction(context, provider, klaim.id, true),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: darkNavy,
-                        padding: const EdgeInsets.symmetric(vertical: 12),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                        elevation: 0,
                       ),
-                      child: const Text("Terima Klaim", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                      child: const Text("Konfirmasi Benar", style: TextStyle(color: Colors.white)),
                     ),
                   ),
                 ],
               )
             else
-              // Jika sudah diproses, tampilkan info
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.symmetric(vertical: 12),
-                decoration: BoxDecoration(
-                  color: Colors.grey[100],
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: Colors.grey[300]!)
-                ),
-                child: const Text(
-                  "Anda sudah memproses klaim ini.",
-                  textAlign: TextAlign.center,
-                  style: TextStyle(color: Colors.grey, fontSize: 13, fontWeight: FontWeight.w500),
-                ),
+                decoration: BoxDecoration(color: Colors.grey[200], borderRadius: BorderRadius.circular(10)),
+                child: const Text("Sudah Diproses", textAlign: TextAlign.center, style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),
               ),
           ],
         ),
@@ -237,102 +223,69 @@ class _UserClaimValidationPageState extends State<UserClaimValidationPage> {
     );
   }
 
-  // --- WIDGET HELPERS ---
+  Widget _buildDetailRow(IconData icon, String label, String value) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(icon, size: 16, color: Colors.grey),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(label, style: const TextStyle(fontSize: 11, color: Colors.grey)),
+              Text(value, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
 
   Widget _buildImageThumb(String? url) {
     if (url == null || url.isEmpty) {
-      return Container(
-        width: 50, height: 50,
-        decoration: BoxDecoration(color: Colors.grey[200], borderRadius: BorderRadius.circular(8)),
-        child: Icon(Icons.image, color: Colors.grey[400]),
-      );
+      return Container(width: 50, height: 50, color: Colors.grey[200], child: const Icon(Icons.image));
     }
     return ClipRRect(
       borderRadius: BorderRadius.circular(8),
-      child: Image.network(
-        url.startsWith('http') ? url : baseUrlImage + url,
-        width: 50, height: 50,
-        fit: BoxFit.cover,
-      ),
+      child: Image.network(url.startsWith('http') ? url : baseUrlImage + url, width: 50, height: 50, fit: BoxFit.cover),
     );
   }
 
   Widget _buildStatusBadge(String status) {
-    Color color;
-    String text;
-
-    switch (status) {
-      case 'diterima_pemilik':
-        color = successGreen;
-        text = "DITERIMA";
-        break;
-      case 'ditolak_pemilik':
-        color = errorRed;
-        text = "DITOLAK";
-        break;
-      case 'menunggu_verifikasi_pemilik':
-        color = pendingOrange;
-        text = "BUTUH AKSI";
-        break;
-      default:
-        color = Colors.grey;
-        text = status.toUpperCase().replaceAll('_', ' ');
-    }
-
+    Color color = status == 'diterima_pemilik' ? successGreen : (status == 'ditolak_pemilik' ? errorRed : pendingOrange);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(6),
-      ),
-      child: Text(text, style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: color)),
+      decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(6)),
+      child: Text(status.replaceAll('_', ' ').toUpperCase(), style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: color)),
     );
   }
 
-  // --- LOGIC ACTIONS ---
-
   Future<void> _handleAction(BuildContext context, KlaimProvider provider, int id, bool isAccept) async {
-    // 1. Konfirmasi Dialog
     bool? confirm = await showDialog(
       context: context, 
       builder: (ctx) => AlertDialog(
-        title: Text(isAccept ? "Terima Klaim?" : "Tolak Klaim?"),
+        title: Text(isAccept ? "Konfirmasi Klaim?" : "Tolak Klaim?"),
         content: Text(isAccept 
-            ? "Dengan menerima, Anda memverifikasi bahwa user ini adalah pemilik yang sah."
-            : "Klaim akan ditolak dan barang akan kembali terbuka untuk klaim lain."),
+            ? "Apakah Anda yakin data ini VALID? Status akan berubah dan menunggu admin menyelesaikan."
+            : "Klaim akan ditolak."),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text("Batal")),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child: Text(isAccept ? "Ya, Terima" : "Tolak", style: TextStyle(color: isAccept ? darkNavy : errorRed, fontWeight: FontWeight.bold)),
+            child: Text("Ya", style: TextStyle(color: isAccept ? darkNavy : errorRed, fontWeight: FontWeight.bold)),
           ),
         ],
       )
     );
 
     if (confirm != true) return;
-
-    // 2. Panggil API Provider
-    // String status yang dikirim ke backend sesuai controller Anda
     String statusApi = isAccept ? 'diterima_pemilik' : 'ditolak_pemilik';
-    
     bool success = await provider.updateStatus(id, statusApi);
-
     if (!mounted) return;
-
     if (success) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(isAccept ? "Klaim diterima! Menunggu admin." : "Klaim berhasil ditolak."),
-          backgroundColor: isAccept ? successGreen : errorRed,
-        )
-      );
-      // Refresh list
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Berhasil diproses"), backgroundColor: successGreen));
       provider.fetchAllKlaim();
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Gagal memproses klaim."), backgroundColor: Colors.red)
-      );
     }
   }
 }

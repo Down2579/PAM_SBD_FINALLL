@@ -222,7 +222,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
 
             const SizedBox(height: 20),
-            Text("App Version 1.0.0",
+            Text("Lost & Found IT DEL",
                 style: TextStyle(color: textGrey, fontSize: 12)),
           ],
         ),

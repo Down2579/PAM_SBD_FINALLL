@@ -220,7 +220,8 @@ class BarangProvider with ChangeNotifier {
       return false;
     }
   }
-    Future<bool> deleteBarang(int id) async {
+  
+  Future<bool> deleteBarang(int id) async {
     try {
       bool success = await _apiService.deleteBarang(id);
       if (success) {
@@ -242,13 +243,33 @@ class BarangProvider with ChangeNotifier {
         // Update status di list lokal agar UI berubah tanpa loading ulang
         final index = _listBarang.indexWhere((item) => item.id == id);
         if (index != -1) {
-          // Kita perlu membuat object baru dengan status 'open' karena field 'status' final
           // Cara aman: Refresh data dari server
           await fetchBarang(refresh: true);
         }
       }
       return success;
     } catch (e) {
+      return false;
+    }
+  }
+
+  // ✅ FUNGSI BARU: Update Barang
+  Future<bool> updateBarang(int id, Map<String, String> fields, File? image) async {
+    _isLoading = true;
+    notifyListeners();
+    
+    try {
+      // Pastikan ApiService memiliki method updateBarang
+      await _apiService.updateBarang(id, fields, image); 
+      
+      await fetchBarang(refresh: true);
+      _isLoading = false;
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _isLoading = false;
+      _errorMessage = e.toString();
+      notifyListeners();
       return false;
     }
   }

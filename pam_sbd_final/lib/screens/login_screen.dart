@@ -248,11 +248,11 @@ class _LoginScreenState extends State<LoginScreen> {
                                       ),
                                     );
                                     
-                                    if (result != null && mounted) {
-                                      ScaffoldMessenger.of(context).showSnackBar(
-                                        const SnackBar(content: Text("Registration successful! Please login.")),
-                                      );
-                                    }
+                                    //if (result != null && mounted) {
+                                      //ScaffoldMessenger.of(context).showSnackBar(
+                                        //const SnackBar(content: Text("Registration successful! Please login.")),
+                                      //);
+                                    //}
                                   },
                                   child: Text(
                                     "Register",
